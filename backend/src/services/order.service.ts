@@ -1,0 +1,248 @@
+import { prisma } from '../config/prisma.js';
+import { orderRepository } from '../repositories/order.repository.js';
+import { ApiError } from '../utils/apiError.js';
+import { generateOrderNumber, generateInvoiceNumber } from '../utils/generator.js';
+import { CreateOrderInput, UpdateOrderStatusInput } from '../validators/order.validator.js';
+import { Prisma, OrderStatus, PaymentStatus, StockMovementType } from '@prisma/client';
+
+export class OrderService {
+  async create(input: CreateOrderInput) {
+    return prisma.$transaction(async (tx) => {
+      // 1. Verify delivery zone
+      const zone = await tx.deliveryZone.findUnique({
+        where: { id: input.deliveryZoneId },
+      });
+      if (!zone || !zone.isActive) {
+        throw ApiError.badRequest('Zone de livraison invalide ou indisponible');
+      }
+
+      // 2. Fetch and check variants & prices
+      const variantIds = input.items.map((i) => i.variantId);
+      const variants = await tx.productVariant.findMany({
+        where: { id: { in: variantIds }, isActive: true },
+        include: {
+          product: true,
+          color: true,
+          size: true,
+        },
+      });
+
+      if (variants.length !== input.items.length) {
+        throw ApiError.badRequest('Certains articles sélectionnés ne sont plus disponibles');
+      }
+
+      // 3. Check stock & prepare order items snapshots
+      let subtotal = new Prisma.Decimal(0);
+      const itemsToCreate = [];
+
+      for (const itemInput of input.items) {
+        const variant = variants.find((v) => v.id === itemInput.variantId);
+        if (!variant) {
+          throw ApiError.badRequest(`Variante ${itemInput.variantId} non trouvée`);
+        }
+
+        if (variant.stock < itemInput.quantity) {
+          throw ApiError.badRequest(
+            `Stock insuffisant pour "${variant.product.name}" (Disponible: ${variant.stock})`
+          );
+        }
+
+        // Determine price snapshot: variant specific price or product base price
+        const unitPrice = variant.price ? variant.price : variant.product.price;
+        const lineTotal = unitPrice.mul(itemInput.quantity);
+        subtotal = subtotal.add(lineTotal);
+
+        itemsToCreate.push({
+          productId: variant.productId,
+          variantId: variant.id,
+          productName: variant.product.name,
+          colorName: variant.color?.name ?? null,
+          sizeName: variant.size?.name ?? null,
+          quantity: itemInput.quantity,
+          unitPrice,
+          total: lineTotal,
+        });
+
+        // Decrement stock and record movement
+        await tx.productVariant.update({
+          where: { id: variant.id },
+          data: { stock: variant.stock - itemInput.quantity },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            variantId: variant.id,
+            type: StockMovementType.STOCK_OUT,
+            quantity: itemInput.quantity,
+            reason: 'Commande client',
+          },
+        });
+      }
+
+      const deliveryFee = zone.price;
+      const total = subtotal.add(deliveryFee);
+      const currentYear = new Date().getFullYear();
+      const orderCountThisYear = await tx.order.count({
+        where: {
+          createdAt: {
+            gte: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+          },
+        },
+      });
+      const orderNumber = generateOrderNumber(orderCountThisYear + 1, currentYear);
+      const invoiceNumber = generateInvoiceNumber(orderCountThisYear + 1, currentYear);
+
+      // 4. Find or create Customer record
+      const customerEmail =
+        input.customer.email && input.customer.email.trim() !== ''
+          ? input.customer.email.toLowerCase().trim()
+          : null;
+      const phoneClean = input.customer.phone.trim();
+
+      let customer = await tx.customer.findFirst({
+        where: {
+          OR: [
+            ...(customerEmail ? [{ email: customerEmail }] : []),
+            { phone: phoneClean },
+          ],
+        },
+      });
+
+      if (!customer) {
+        customer = await tx.customer.create({
+          data: {
+            firstName: input.customer.firstName.trim(),
+            lastName: input.customer.lastName.trim(),
+            email: customerEmail || `${phoneClean.replace(/[^0-9]/g, '')}@client.najastore.sn`,
+            phone: phoneClean,
+            address: input.customer.address.trim(),
+            city: input.customer.city || 'Dakar',
+          },
+        });
+      }
+
+      // 5. Create Order
+      const order = await tx.order.create({
+        data: {
+          orderNumber,
+          customerId: customer.id,
+          deliveryZoneId: zone.id,
+          deliveryAddress: input.deliveryAddress.trim(),
+          phone: input.phone.trim(),
+          email: customerEmail || input.email?.toLowerCase().trim() || null,
+          notes: input.notes?.trim() || null,
+          subtotal,
+          deliveryFee,
+          total,
+          paymentMethod: input.paymentMethod,
+          paymentStatus: PaymentStatus.PENDING,
+          status: OrderStatus.NEW,
+          items: {
+            create: itemsToCreate,
+          },
+          payments: {
+            create: {
+              provider: input.paymentMethod,
+              amount: total,
+              status: PaymentStatus.PENDING,
+            },
+          },
+          invoice: {
+            create: {
+              invoiceNumber,
+            },
+          },
+        },
+        include: {
+          customer: true,
+          deliveryZone: true,
+          items: true,
+          payments: true,
+          invoice: true,
+        },
+      });
+
+      return order;
+    });
+  }
+
+  async getById(id: string) {
+    const order = await orderRepository.findById(id);
+    if (!order) {
+      throw ApiError.notFound('Commande introuvable');
+    }
+    return order;
+  }
+
+  async getByOrderNumber(orderNumber: string) {
+    const order = await orderRepository.findByOrderNumber(orderNumber);
+    if (!order) {
+      throw ApiError.notFound('Commande introuvable');
+    }
+    return order;
+  }
+
+  async list(params: { page?: number; limit?: number; status?: OrderStatus; customerId?: string }) {
+    return orderRepository.findMany(params);
+  }
+
+  async updateStatus(id: string, input: UpdateOrderStatusInput) {
+    const existing = await orderRepository.findById(id);
+    if (!existing) {
+      throw ApiError.notFound('Commande introuvable');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      // If status changed to CANCELLED and was not already cancelled, restore inventory
+      if (input.status === OrderStatus.CANCELLED && existing.status !== OrderStatus.CANCELLED) {
+        for (const item of existing.items) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } },
+            });
+
+            await tx.stockMovement.create({
+              data: {
+                variantId: item.variantId,
+                type: StockMovementType.RELEASE,
+                quantity: item.quantity,
+                reason: `Annulation commande ${existing.orderNumber}`,
+              },
+            });
+          }
+        }
+      }
+
+      // Auto-set payment status to PAID if DELIVERED with CASH_ON_DELIVERY
+      let effectivePaymentStatus = input.paymentStatus;
+      if (
+        input.status === OrderStatus.DELIVERED &&
+        existing.paymentMethod === 'CASH_ON_DELIVERY' &&
+        existing.paymentStatus !== PaymentStatus.PAID &&
+        !input.paymentStatus
+      ) {
+        effectivePaymentStatus = PaymentStatus.PAID;
+      }
+
+      const updated = await tx.order.update({
+        where: { id },
+        data: {
+          ...(input.status ? { status: input.status } : {}),
+          ...(effectivePaymentStatus ? { paymentStatus: effectivePaymentStatus } : {}),
+        },
+        include: {
+          customer: true,
+          deliveryZone: true,
+          items: true,
+          payments: true,
+          invoice: true,
+        },
+      });
+
+      return updated;
+    });
+  }
+}
+
+export const orderService = new OrderService();

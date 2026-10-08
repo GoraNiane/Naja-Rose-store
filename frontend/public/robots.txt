@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /shop
+Allow: /categories
+Allow: /product/*
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /checkout/payment-redirect
+Disallow: /api/*
+
+Sitemap: https://najastore.sn/sitemap.xml

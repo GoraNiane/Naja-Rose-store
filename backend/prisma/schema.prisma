@@ -1,0 +1,346 @@
+// ==============================================================================
+// NAJA STORE - PRISMA SCHEMA DEFINITION (POSTGRESQL)
+// Designed for Senegalese & West African E-Commerce (Wave, Orange Money, COD)
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  WAVE
+  ORANGE_MONEY
+  CASH_ON_DELIVERY
+}
+
+enum StockMovementType {
+  STOCK_IN
+  STOCK_OUT
+  ADJUSTMENT
+  RESERVATION
+  RELEASE
+}
+
+// ------------------------------------------------------------------------------
+// USER & CUSTOMER MODELS
+// ------------------------------------------------------------------------------
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  role          Role           @default(CUSTOMER)
+  firstName     String?
+  lastName      String?
+  phone         String?
+  isActive      Boolean        @default(true)
+  customer      Customer?
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("users")
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  firstName String
+  lastName  String
+  email     String
+  phone     String
+  address   String?
+  city      String?  @default("Dakar")
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([phone])
+  @@map("customers")
+}
+
+// ------------------------------------------------------------------------------
+// CATALOG (CATEGORY, PRODUCT, VARIANTS, COLORS, SIZES, IMAGES)
+// ------------------------------------------------------------------------------
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  imageUrl    String?
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([slug])
+  @@map("categories")
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  name        String
+  slug        String           @unique
+  description String?          @db.Text
+  categoryId  String
+  category    Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  price       Decimal          @db.Decimal(10, 2)
+  oldPrice    Decimal?         @db.Decimal(10, 2)
+  isActive    Boolean          @default(true)
+  images      ProductImage[]
+  variants    ProductVariant[]
+  orderItems  OrderItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([isActive])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  publicId  String
+  position  Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model Color {
+  id        String           @id @default(uuid())
+  name      String           @unique
+  hex       String
+  variants  ProductVariant[]
+  createdAt DateTime         @default(now())
+
+  @@map("colors")
+}
+
+model Size {
+  id        String           @id @default(uuid())
+  name      String           @unique
+  variants  ProductVariant[]
+  createdAt DateTime         @default(now())
+
+  @@map("sizes")
+}
+
+model ProductVariant {
+  id             String          @id @default(uuid())
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorId        String?
+  color          Color?          @relation(fields: [colorId], references: [id], onDelete: SetNull)
+  sizeId         String?
+  size           Size?           @relation(fields: [sizeId], references: [id], onDelete: SetNull)
+  sku            String          @unique
+  stock          Int             @default(0)
+  price          Decimal?        @db.Decimal(10, 2)
+  isActive       Boolean         @default(true)
+  stockMovements StockMovement[]
+  orderItems     OrderItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([productId, colorId, sizeId])
+  @@index([productId])
+  @@index([sku])
+  @@map("product_variants")
+}
+
+// ------------------------------------------------------------------------------
+// LOGISTICS & DELIVERY
+// ------------------------------------------------------------------------------
+
+model DeliveryZone {
+  id                String   @id @default(uuid())
+  name              String
+  price             Decimal  @db.Decimal(10, 2)
+  estimatedDelivery String?  @default("24h - 48h")
+  isActive          Boolean  @default(true)
+  orders            Order[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("delivery_zones")
+}
+
+// ------------------------------------------------------------------------------
+// ORDERS, ITEMS, INVOICES & PAYMENTS
+// ------------------------------------------------------------------------------
+
+model Order {
+  id              String         @id @default(uuid())
+  orderNumber     String         @unique
+  customerId      String
+  customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  deliveryZoneId  String?
+  deliveryZone    DeliveryZone?  @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  deliveryAddress String
+  phone           String
+  email           String?
+  notes           String?
+  subtotal        Decimal        @db.Decimal(10, 2)
+  deliveryFee     Decimal        @db.Decimal(10, 2)
+  total           Decimal        @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus  @default(PENDING)
+  status          OrderStatus    @default(NEW)
+  items           OrderItem[]
+  payments        Payment[]
+  invoice         Invoice?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([orderNumber])
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String          @id @default(uuid())
+  orderId     String
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  productName String
+  colorName   String?
+  sizeName    String?
+  quantity    Int
+  unitPrice   Decimal         @db.Decimal(10, 2)
+  total       Decimal         @db.Decimal(10, 2)
+  createdAt   DateTime        @default(now())
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider      PaymentMethod
+  transactionId String?       @unique
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([transactionId])
+  @@map("payments")
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  orderId       String   @unique
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoiceNumber String   @unique
+  pdfUrl        String?
+  createdAt     DateTime @default(now())
+
+  @@index([invoiceNumber])
+  @@map("invoices")
+}
+
+// ------------------------------------------------------------------------------
+// INVENTORY / STOCK MANAGEMENT
+// ------------------------------------------------------------------------------
+
+model StockMovement {
+  id        String            @id @default(uuid())
+  variantId String
+  variant   ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  type      StockMovementType
+  quantity  Int
+  reason    String?
+  reference String?
+  createdAt DateTime          @default(now())
+
+  @@index([variantId])
+  @@map("stock_movements")
+}
+
+// ------------------------------------------------------------------------------
+// NOTIFICATIONS & AUDIT LOGS
+// ------------------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
