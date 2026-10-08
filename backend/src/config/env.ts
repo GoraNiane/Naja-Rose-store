@@ -5,13 +5,24 @@ dotenv.config();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().default('5000').transform((val) => parseInt(val, 10)),
+  PORT: z
+    .union([z.string(), z.number()])
+    .default(5000)
+    .transform((val) => (typeof val === 'string' ? parseInt(val, 10) || 5000 : val)),
   APP_URL: z.string().default('http://localhost:5173'),
-  API_URL: z.string().default('http://localhost:5000/api/v1'),
+  API_URL: z.string().default('/api/v1'),
   
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  DATABASE_URL: z
+    .string()
+    .min(1, 'DATABASE_URL is required')
+    .default(
+      'postgresql://neondb_owner:npg_wRqNoy85PnAx@ep-bold-leaf-b8ub7on2-pooler.c-14.us-east-1.aws.neon.tech/neondb?sslmode=require'
+    ),
   
-  JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
+  JWT_SECRET: z
+    .string()
+    .min(16, 'JWT_SECRET must be at least 16 characters')
+    .default('naja_store_senegal_secure_dev_jwt_secret_key_32_characters_long'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
