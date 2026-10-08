@@ -23,6 +23,15 @@ async function getApp() {
 }
 
 module.exports = async (req, res) => {
-  const app = await getApp();
-  return app(req, res);
+  try {
+    const app = await getApp();
+    return app(req, res);
+  } catch (error) {
+    console.error('CRITICAL VERCEL HANDLER ERROR:', error);
+    res.status(500).json({
+      success: false,
+      error: error?.message || String(error),
+      details: 'Vercel Serverless Function encountered an error initializing backend',
+    });
+  }
 };

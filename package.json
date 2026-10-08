@@ -8,10 +8,10 @@
   },
   "scripts": {
     "postinstall": "prisma generate --schema=backend/prisma/schema.prisma && npm --prefix backend install && npm --prefix frontend install",
-    "prisma:generate": "prisma generate --schema=backend/prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema=backend/prisma/schema.prisma && cd backend && npx prisma generate",
     "prisma:push": "prisma db push --schema=backend/prisma/schema.prisma",
     "prisma:seed": "tsx backend/prisma/seed.ts",
-    "build": "prisma generate --schema=backend/prisma/schema.prisma && npm --prefix backend run build && npm --prefix frontend run build",
+    "build": "npx prisma generate --schema=backend/prisma/schema.prisma && cd backend && npx prisma generate && npm run build && cd ../frontend && npm install && npm run build",
     "start": "node backend/dist/server.js",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev"
