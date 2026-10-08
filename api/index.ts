@@ -1,6 +1,6 @@
-import { createApp } from '../backend/src/app.js';
-import { connectDatabase } from '../backend/src/config/prisma.js';
-import { authService } from '../backend/src/services/auth.service.js';
+import { createApp } from '../backend/dist/app.js';
+import { connectDatabase } from '../backend/dist/config/prisma.js';
+import { authService } from '../backend/dist/services/auth.service.js';
 
 let isInitialized = false;
 const app = createApp();
