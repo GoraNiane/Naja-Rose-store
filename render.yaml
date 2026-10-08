@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: naja-rose-store
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm run install:all && npm run build
+    startCommand: npm --prefix backend run prisma:push && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: APP_URL
+        fromService:
+          type: web
+          name: naja-rose-store
+          property: host
+      - key: API_URL
+        value: /api/v1
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: WAVE_API_KEY
+        sync: false
+      - key: WAVE_SECRET
+        sync: false
+      - key: WAVE_BUSINESS_ID
+        sync: false
+      - key: WAVE_WEBHOOK_SECRET
+        sync: false
+      - key: ORANGE_MONEY_CLIENT_ID
+        sync: false
+      - key: ORANGE_MONEY_CLIENT_SECRET
+        sync: false
+      - key: ORANGE_MONEY_MERCHANT_KEY
+        sync: false
