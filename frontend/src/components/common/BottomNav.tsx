@@ -38,7 +38,7 @@ export function BottomNav({ onOpenCart }: BottomNavProps) {
     },
     {
       label: 'WhatsApp',
-      path: 'https://wa.me/221770000001?text=Bonjour%20Naja%20Rose%20Store%2C%20j%27aimerais%20avoir%20des%20informations%20sur%20vos%20articles.',
+      path: 'https://wa.me/221773817191?text=Bonjour%20Naja%20Rose%20Store%2C%20j%27aimerais%20avoir%20des%20informations%20sur%20vos%20articles.',
       icon: MessageCircle,
       isExternal: true,
     },

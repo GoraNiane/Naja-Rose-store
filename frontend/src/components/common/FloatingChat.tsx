@@ -8,7 +8,7 @@ export function FloatingChat() {
 
   const handleWhatsAppRedirect = (customMsg?: string) => {
     const text = customMsg || message || "Bonjour Naja Rose Store, j'aimerais avoir des informations sur vos articles.";
-    const url = `https://wa.me/221770000001?text=${encodeURIComponent(text)}`;
+    const url = `https://wa.me/221773817191?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     setIsOpen(false);
   };

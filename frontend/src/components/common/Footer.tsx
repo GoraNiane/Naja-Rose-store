@@ -1,5 +1,5 @@
 import { APP_CONFIG } from '../../lib/constants';
-import { Phone, Mail, MapPin, Heart, ShieldCheck, Truck, Sparkles } from 'lucide-react';
+import { Phone, Mail, MapPin, Heart, ShieldCheck, Truck, Sparkles, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BrandLogo } from './BrandLogo';
 
@@ -131,13 +131,24 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-[#E7A8B4] flex-shrink-0" />
-                <a href={`tel:${APP_CONFIG.phone}`} className="hover:text-white">
+                <a href={`tel:${APP_CONFIG.phone}`} className="hover:text-white transition-colors">
                   {APP_CONFIG.phone}
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
+                <MessageCircle className="w-4 h-4 text-[#25D366] flex-shrink-0" />
+                <a
+                  href={`https://wa.me/${APP_CONFIG.whatsapp.replace('+', '')}?text=Bonjour%20Naja%20Rose%20Store%2C%20je%20souhaite%20des%20renseignements`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <span>WhatsApp : {APP_CONFIG.phone}</span>
+                </a>
+              </li>
+              <li className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-[#E7A8B4] flex-shrink-0" />
-                <a href={`mailto:${APP_CONFIG.email}`} className="hover:text-white">
+                <a href={`mailto:${APP_CONFIG.email}`} className="hover:text-white transition-colors">
                   {APP_CONFIG.email}
                 </a>
               </li>
