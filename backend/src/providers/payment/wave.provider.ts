@@ -48,24 +48,24 @@ export class WaveProvider implements PaymentProvider {
     // 1. Sandbox / Mock mode fallback
     if (this.isSandbox) {
       const mockSessionId = `wave_sess_sbx_${params.orderNumber}_${Date.now()}`;
-      const customerPhone = params.customerPhone || '';
-      const sandboxRedirectUrl = `/checkout/payment-redirect?method=WAVE&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&phone=${encodeURIComponent(customerPhone)}&txId=${mockSessionId}&sandbox=true`;
-      const waveDeepLink = `wave://send?phone=${encodeURIComponent(customerPhone)}&amount=${params.amount}&memo=${encodeURIComponent(params.orderNumber)}`;
+      const merchantPhone = '221773817191';
+      const sandboxRedirectUrl = `/checkout/payment-redirect?method=WAVE&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&phone=${encodeURIComponent(merchantPhone)}&txId=${mockSessionId}&sandbox=true`;
+      const waveDeepLink = `wave://send?phone=${merchantPhone}&recipient=${merchantPhone}&amount=${params.amount}&memo=${encodeURIComponent(`Commande ${params.orderNumber}`)}`;
 
       return {
         transactionId: mockSessionId,
         paymentUrl: sandboxRedirectUrl,
         launchUrl: sandboxRedirectUrl,
         waveLaunchUrl: waveDeepLink,
-        customerPhone,
+        customerPhone: params.customerPhone,
         status: PaymentStatus.PENDING,
         isSandbox: true,
-        instructions: `Ouvrez l'application Wave ou validez la transaction sur votre mobile avec le numéro ${customerPhone || 'enregistré'}`,
+        instructions: `Ouvrez l'application Wave pour régler ${params.amount} FCFA au marchand NAJA ROSE STORE (+221 77 381 71 91)`,
         metadata: {
           provider: 'WAVE',
           mode: 'SANDBOX',
           clientReference: params.orderNumber,
-          customerPhone,
+          customerPhone: params.customerPhone,
           amount: params.amount,
           currency: params.currency || 'XOF',
           deepLink: waveDeepLink,

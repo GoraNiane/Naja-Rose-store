@@ -13,6 +13,8 @@ import {
   ExternalLink,
   Sparkles,
   CreditCard,
+  Store,
+  FileText,
 } from 'lucide-react';
 
 export function PaymentRedirectPage() {
@@ -23,7 +25,6 @@ export function PaymentRedirectPage() {
   const orderId = searchParams.get('orderId') || '';
   const orderNumber = searchParams.get('orderNumber') || '';
   const amount = Number(searchParams.get('amount') || 0);
-  const phone = searchParams.get('phone') || '';
   const txId = searchParams.get('txId') || searchParams.get('token') || '';
   const isSandbox = searchParams.get('sandbox') === 'true';
 
@@ -35,19 +36,23 @@ export function PaymentRedirectPage() {
   const isOM = method === 'ORANGE_MONEY';
   const isPayTech = method === 'PAYTECH';
 
+  const MERCHANT_PHONE_CLEAN = '221773817191';
+  const MERCHANT_PHONE_FORMATTED = '+221 77 381 71 91';
+  const MERCHANT_NAME = 'NAJA ROSE STORE';
+
   // Check if current user is on mobile
   const isMobile =
     typeof navigator !== 'undefined' &&
     /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 
-  // Construct Wave & Orange Max it mobile links
-  const cleanPhone = phone.replace(/\s+/g, '');
-  const waveDeepLink = `wave://send?phone=${encodeURIComponent(cleanPhone)}&amount=${amount}&memo=${encodeURIComponent(orderNumber)}`;
+  // Construct official direct Wave payment link (Sender -> NAJA ROSE STORE)
+  const orderMemo = `Commande ${orderNumber || orderId}`;
+  const waveDeepLink = `wave://send?phone=${MERCHANT_PHONE_CLEAN}&recipient=${MERCHANT_PHONE_CLEAN}&amount=${amount}&memo=${encodeURIComponent(orderMemo)}`;
   const waveWebCheckout = `https://pay.wave.com/`;
   const orangeMaxItDeepLink = `maxit://`;
   const orangeMaxItWeb = `https://maxit.orange.sn/`;
 
-  // On Mobile: Attempt automatic redirection to the Wave app once upon entry
+  // On Mobile: Attempt automatic redirection directly into the Wave / Max it app
   useEffect(() => {
     if (isWave && isMobile && !autoRedirected) {
       setAutoRedirected(true);
@@ -55,9 +60,9 @@ export function PaymentRedirectPage() {
         try {
           window.location.href = waveDeepLink;
         } catch {
-          // Fallback
+          // Handled gracefully
         }
-      }, 500);
+      }, 400);
       return () => clearTimeout(timer);
     }
   }, [isWave, isMobile, autoRedirected, waveDeepLink]);
@@ -66,8 +71,9 @@ export function PaymentRedirectPage() {
     try {
       window.location.href = waveDeepLink;
       setTimeout(() => {
+        // Only open web backup if wave protocol wasn't handled
         window.open(waveWebCheckout, '_blank');
-      }, 1500);
+      }, 2500);
     } catch {
       window.open(waveWebCheckout, '_blank');
     }
@@ -78,7 +84,7 @@ export function PaymentRedirectPage() {
       window.location.href = orangeMaxItDeepLink;
       setTimeout(() => {
         window.open(orangeMaxItWeb, '_blank');
-      }, 1500);
+      }, 2500);
     } catch {
       window.open(orangeMaxItWeb, '_blank');
     }
@@ -93,7 +99,7 @@ export function PaymentRedirectPage() {
       if (status === 'PAID') {
         navigate(`/checkout/success?orderNumber=${orderNumber}`);
       } else {
-        setErrorMsg('Le paiement a été marqué comme annulé ou échoué.');
+        setErrorMsg('La transaction a été marquée comme annulée ou interrompue.');
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Erreur lors de la confirmation du paiement');
@@ -108,7 +114,7 @@ export function PaymentRedirectPage() {
         {/* Top Notification Badge */}
         <div className="bg-[#8B3A4A] text-white px-4 py-2 text-xs font-bold flex items-center justify-center gap-2">
           <ShieldCheck className="w-4 h-4 text-[#FAF2F0]" />
-          <span>PAIEMENT SÉCURISÉ — NAJA ROSE STORE</span>
+          <span>PAIEMENT SÉCURISÉ MARCHAND — NAJA ROSE STORE</span>
         </div>
 
         {/* Header Visual Banner */}
@@ -121,7 +127,7 @@ export function PaymentRedirectPage() {
               : 'bg-gradient-to-br from-[#8B3A4A] via-[#A84B5E] to-[#2C1E21]'
           }`}
         >
-          {/* Subtle background wave circles */}
+          {/* Background blur decorative circles */}
           <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
 
           <div className="flex items-center justify-between gap-4 relative z-10">
@@ -130,13 +136,11 @@ export function PaymentRedirectPage() {
                 <Sparkles className="w-3 h-3" /> Application Officielle Mobile
               </span>
               <h1 className="text-2xl sm:text-3xl font-black font-serif tracking-tight">
-                {isWave ? 'Wave Sénégal' : isOM ? 'Orange Money (Max it)' : 'Carte Bancaire (Visa / Mastercard)'}
+                {isWave ? 'Wave Sénégal' : isOM ? 'Orange Money (Max it)' : 'Carte Bancaire'}
               </h1>
-              {cleanPhone && (
-                <p className="text-xs opacity-95 flex items-center gap-1 pt-0.5">
-                  <Smartphone className="w-3.5 h-3.5" /> Numéro : <strong>{cleanPhone}</strong>
-                </p>
-              )}
+              <p className="text-xs opacity-95 flex items-center gap-1 pt-0.5">
+                <Store className="w-3.5 h-3.5" /> Marchand : <strong>{MERCHANT_NAME}</strong>
+              </p>
             </div>
 
             <div className="w-16 h-16 rounded-2xl bg-white p-1 flex items-center justify-center shadow-lg shrink-0 border border-white/30">
@@ -176,6 +180,28 @@ export function PaymentRedirectPage() {
 
         {/* Body Content */}
         <div className="p-6 sm:p-8 space-y-6">
+          {/* Merchant & Transfer Details Card */}
+          <div className="p-4 rounded-2xl bg-[#FAF5F4] border border-[#F2E5E2] space-y-2 text-xs text-[#644D52]">
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Store className="w-3.5 h-3.5 text-[#8B3A4A]" /> Destinataire marchand :
+              </span>
+              <span className="font-bold text-[#2C1E21]">{MERCHANT_NAME}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Smartphone className="w-3.5 h-3.5 text-[#8B3A4A]" /> Numéro Wave / Orange :
+              </span>
+              <span className="font-mono font-bold text-[#2C1E21]">{MERCHANT_PHONE_FORMATTED}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-1.5 font-medium">
+                <FileText className="w-3.5 h-3.5 text-[#8B3A4A]" /> Motif / Référence :
+              </span>
+              <span className="font-mono font-bold text-[#8B3A4A]">{orderNumber || orderId}</span>
+            </div>
+          </div>
+
           {/* WAVE SPECIFIC UI & ACTIONS */}
           {isWave && (
             <div className="space-y-4">
@@ -193,7 +219,7 @@ export function PaymentRedirectPage() {
                 <ExternalLink className="w-4 h-4" />
               </button>
               <p className="text-xs text-center text-[#7A6469] leading-relaxed">
-                Appuyez sur le bouton ci-dessus pour ouvrir directement votre compte <strong>Wave</strong> et valider le règlement de <strong>{formatCFA(amount)}</strong> avec votre code PIN.
+                Appuyez ci-dessus pour ouvrir directement l'écran de paiement Wave vers <strong>{MERCHANT_NAME} ({MERCHANT_PHONE_FORMATTED})</strong> avec le montant pré-rempli de <strong>{formatCFA(amount)}</strong>.
               </p>
             </div>
           )}
@@ -215,7 +241,7 @@ export function PaymentRedirectPage() {
                 <ExternalLink className="w-4 h-4" />
               </button>
               <p className="text-xs text-center text-[#7A6469] leading-relaxed">
-                Paiement 100% sécurisé via l'application <strong>Orange Max it</strong>. Ouvrez Max it pour approuver le paiement de <strong>{formatCFA(amount)}</strong>.
+                Paiement direct et 100% sécurisé via l'application <strong>Orange Max it</strong> pour le règlement de <strong>{formatCFA(amount)}</strong> vers <strong>{MERCHANT_NAME}</strong>.
               </p>
             </div>
           )}
@@ -236,7 +262,7 @@ export function PaymentRedirectPage() {
           {/* Session details */}
           {txId && (
             <p className="text-[10px] font-mono text-slate-400 text-center">
-              Session ID : {txId} {isSandbox ? '• (Mode Test / Simulation)' : ''}
+              Session ID : {txId} {isSandbox ? '• (Mode Test / Validation)' : ''}
             </p>
           )}
 
