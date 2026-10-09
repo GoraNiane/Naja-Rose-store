@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { paymentService } from '../services/payment.service';
 import { formatCFA } from '../lib/utils';
 import { Button } from '../components/ui/Button';
-import { Spinner } from '../components/ui/Spinner';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -28,8 +26,6 @@ export function PaymentRedirectPage() {
   const txId = searchParams.get('txId') || searchParams.get('token') || '';
   const isSandbox = searchParams.get('sandbox') === 'true';
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [autoRedirected, setAutoRedirected] = useState(false);
 
   const isWave = method === 'WAVE';
@@ -90,22 +86,12 @@ export function PaymentRedirectPage() {
     }
   };
 
-  const handleConfirmPayment = async (status: 'PAID' | 'FAILED' = 'PAID') => {
-    try {
-      setIsProcessing(true);
-      setErrorMsg(null);
-      await paymentService.simulateSandbox(orderNumber || orderId, status);
+  const handleVerifyPayment = () => {
+    navigate(`/checkout/success?orderNumber=${orderNumber || orderId}`);
+  };
 
-      if (status === 'PAID') {
-        navigate(`/checkout/success?orderNumber=${orderNumber}`);
-      } else {
-        setErrorMsg('La transaction a été marquée comme annulée ou interrompue.');
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Erreur lors de la confirmation du paiement');
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleCancelTransaction = () => {
+    navigate(`/commande/${orderNumber || orderId}/facture?payment=cancelled`);
   };
 
   return (
@@ -266,34 +252,23 @@ export function PaymentRedirectPage() {
             </p>
           )}
 
-          {errorMsg && (
-            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-              <XCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
           {/* Confirmation & Completion CTA */}
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <Button
               variant="gold"
               size="lg"
               className="w-full justify-center py-4 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all"
-              disabled={isProcessing}
-              onClick={() => handleConfirmPayment('PAID')}
-              leftIcon={isProcessing ? <Spinner size="sm" /> : <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+              onClick={handleVerifyPayment}
+              leftIcon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
             >
-              {isProcessing
-                ? 'Vérification de votre paiement...'
-                : `J'ai validé le paiement (${formatCFA(amount)})`}
+              <span>Vérifier mon paiement ({formatCFA(amount)})</span>
             </Button>
 
             <Button
               variant="outline"
               size="sm"
               className="w-full justify-center text-rose-600 hover:bg-rose-50 border-rose-200"
-              disabled={isProcessing}
-              onClick={() => handleConfirmPayment('FAILED')}
+              onClick={handleCancelTransaction}
               leftIcon={<XCircle className="w-3.5 h-3.5" />}
             >
               Annuler la transaction
