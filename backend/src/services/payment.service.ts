@@ -74,7 +74,7 @@ export class PaymentService {
       amount: Number(order.total),
       currency: 'XOF',
       customerPhone: order.phone,
-      customerEmail: order.email || order.customer.email,
+      customerEmail: (order.email || order.customer.email) || undefined,
       customerName,
       successUrl,
       cancelUrl,

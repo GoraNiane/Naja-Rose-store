@@ -22,13 +22,18 @@ import {
 const checkoutSchema = z.object({
   firstName: z.string().min(2, 'Le prénom est obligatoire (au moins 2 caractères)'),
   lastName: z.string().min(2, 'Le nom de famille est obligatoire'),
-  phone: z.string().min(8, 'Numéro de téléphone requis (ex: +221 77 123 45 67)'),
+  phone: z.string().min(6, 'Numéro de téléphone requis (ex: +221 77 123 45 67)'),
   deliveryZoneId: z.string().min(1, 'Veuillez sélectionner une zone de livraison'),
-  address: z.string().min(4, 'Adresse détaillée requise (rue, numéro, bâtiment...)'),
+  address: z.string().min(3, 'Adresse détaillée requise (rue, numéro, bâtiment...)'),
   city: z.string().default('Dakar'),
   neighborhood: z.string().optional(),
   landmark: z.string().optional(),
-  email: z.string().email('Adresse e-mail valide requise').optional().or(z.literal('')),
+  email: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.trim() === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()), {
+      message: 'Adresse e-mail invalide',
+    }),
   notes: z.string().optional(),
 });
 
@@ -228,7 +233,7 @@ export function CheckoutPage() {
               />
               <Input
                 label="Adresse Email (facultatif)"
-                placeholder="Ex: aminata.ndiaye@gmail.com"
+                placeholder="Optionnel (le téléphone suffit)"
                 type="email"
                 error={errors.email?.message}
                 {...register('email')}

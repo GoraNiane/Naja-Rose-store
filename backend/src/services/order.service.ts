@@ -16,10 +16,10 @@ export class OrderService {
         throw ApiError.badRequest('Zone de livraison invalide ou indisponible');
       }
 
-      // 2. Fetch and check variants & prices
-      const variantIds = input.items.map((i) => i.variantId);
+      // 2. Fetch and check variants & prices (using unique variant IDs set)
+      const uniqueVariantIds = Array.from(new Set(input.items.map((i) => i.variantId)));
       const variants = await tx.productVariant.findMany({
-        where: { id: { in: variantIds }, isActive: true },
+        where: { id: { in: uniqueVariantIds }, isActive: true },
         include: {
           product: true,
           color: true,
@@ -27,60 +27,32 @@ export class OrderService {
         },
       });
 
-      if (variants.length !== input.items.length) {
+      if (variants.length !== uniqueVariantIds.length) {
         throw ApiError.badRequest('Certains articles sélectionnés ne sont plus disponibles');
       }
 
-      // 3. Check stock & prepare order items snapshots
-      let subtotal = new Prisma.Decimal(0);
-      const itemsToCreate = [];
-
-      for (const itemInput of input.items) {
-        const variant = variants.find((v) => v.id === itemInput.variantId);
-        if (!variant) {
-          throw ApiError.badRequest(`Variante ${itemInput.variantId} non trouvée`);
-        }
-
-        if (variant.stock < itemInput.quantity) {
-          throw ApiError.badRequest(
-            `Stock insuffisant pour "${variant.product.name}" (Disponible: ${variant.stock})`
-          );
-        }
-
-        // Determine price snapshot: variant specific price or product base price
-        const unitPrice = variant.price ? variant.price : variant.product.price;
-        const lineTotal = unitPrice.mul(itemInput.quantity);
-        subtotal = subtotal.add(lineTotal);
-
-        itemsToCreate.push({
-          productId: variant.productId,
-          variantId: variant.id,
-          productName: variant.product.name,
-          colorName: variant.color?.name ?? null,
-          sizeName: variant.size?.name ?? null,
-          quantity: itemInput.quantity,
-          unitPrice,
-          total: lineTotal,
-        });
-
-        // Decrement stock and record movement
-        await tx.productVariant.update({
-          where: { id: variant.id },
-          data: { stock: variant.stock - itemInput.quantity },
-        });
-
-        await tx.stockMovement.create({
-          data: {
-            variantId: variant.id,
-            type: StockMovementType.STOCK_OUT,
-            quantity: itemInput.quantity,
-            reason: 'Commande client',
-          },
-        });
+      // 3. Aggregate requested quantity per variant to prevent overselling
+      const requestedQtyMap = new Map<string, number>();
+      for (const item of input.items) {
+        const current = requestedQtyMap.get(item.variantId) || 0;
+        requestedQtyMap.set(item.variantId, current + item.quantity);
       }
 
-      const deliveryFee = zone.price;
-      const total = subtotal.add(deliveryFee);
+      for (const variant of variants) {
+        const requestedQty = requestedQtyMap.get(variant.id) || 0;
+        if (variant.stock < requestedQty) {
+          const variantLabel = [
+            variant.product.name,
+            variant.color?.name ? `Couleur ${variant.color.name}` : null,
+            variant.size?.name ? `Taille ${variant.size.name}` : null,
+          ].filter(Boolean).join(' - ');
+          throw ApiError.badRequest(
+            `Stock insuffisant pour "${variantLabel}" (Demandé: ${requestedQty}, Disponible: ${variant.stock})`
+          );
+        }
+      }
+
+      // 4. Prepare Order Numbers & Sequences
       const currentYear = new Date().getFullYear();
 
       // Find highest sequential order number for current year
@@ -127,7 +99,52 @@ export class OrderService {
       const orderNumber = generateOrderNumber(nextOrderSeq, currentYear);
       const invoiceNumber = generateInvoiceNumber(nextInvoiceSeq, currentYear);
 
-      // 4. Find or create Customer record
+      // 5. Calculate Subtotal, Build Line Snapshots & Decrement Inventory
+      let subtotal = new Prisma.Decimal(0);
+      const itemsToCreate = [];
+
+      for (const itemInput of input.items) {
+        const variant = variants.find((v) => v.id === itemInput.variantId);
+        if (!variant) {
+          throw ApiError.badRequest(`Variante ${itemInput.variantId} non trouvée`);
+        }
+
+        // Determine price snapshot: variant specific price or product base price
+        const unitPrice = variant.price ? variant.price : variant.product.price;
+        const lineTotal = unitPrice.mul(itemInput.quantity);
+        subtotal = subtotal.add(lineTotal);
+
+        itemsToCreate.push({
+          productId: variant.productId,
+          variantId: variant.id,
+          productName: variant.product.name,
+          colorName: variant.color?.name ?? null,
+          sizeName: variant.size?.name ?? null,
+          quantity: itemInput.quantity,
+          unitPrice,
+          total: lineTotal,
+        });
+
+        // Decrement stock and record movement
+        await tx.productVariant.update({
+          where: { id: variant.id },
+          data: { stock: { decrement: itemInput.quantity } },
+        });
+
+        await tx.stockMovement.create({
+          data: {
+            variantId: variant.id,
+            type: StockMovementType.STOCK_OUT,
+            quantity: itemInput.quantity,
+            reason: `Commande client ${orderNumber}`,
+          },
+        });
+      }
+
+      const deliveryFee = zone.price;
+      const total = subtotal.add(deliveryFee);
+
+      // 6. Find or create Customer record (with optional email)
       const customerEmail =
         input.customer.email && input.customer.email.trim() !== ''
           ? input.customer.email.toLowerCase().trim()
@@ -148,15 +165,26 @@ export class OrderService {
           data: {
             firstName: input.customer.firstName.trim(),
             lastName: input.customer.lastName.trim(),
-            email: customerEmail || `${phoneClean.replace(/[^0-9]/g, '')}@client.najastore.sn`,
+            email: customerEmail,
             phone: phoneClean,
             address: input.customer.address.trim(),
             city: input.customer.city || 'Dakar',
           },
         });
+      } else {
+        await tx.customer.update({
+          where: { id: customer.id },
+          data: {
+            firstName: input.customer.firstName.trim(),
+            lastName: input.customer.lastName.trim(),
+            ...(customerEmail ? { email: customerEmail } : {}),
+            address: input.customer.address.trim(),
+            city: input.customer.city || customer.city || 'Dakar',
+          },
+        });
       }
 
-      // 5. Create Order
+      // 7. Create Order
       const order = await tx.order.create({
         data: {
           orderNumber,
@@ -164,7 +192,7 @@ export class OrderService {
           deliveryZoneId: zone.id,
           deliveryAddress: input.deliveryAddress.trim(),
           phone: input.phone.trim(),
-          email: customerEmail || input.email?.toLowerCase().trim() || null,
+          email: customerEmail || (input.email && input.email.trim() !== '' ? input.email.toLowerCase().trim() : null),
           notes: input.notes?.trim() || null,
           subtotal,
           deliveryFee,

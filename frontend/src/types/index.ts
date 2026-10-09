@@ -82,7 +82,9 @@ export interface CartItem {
   productSlug: string;
   imageUrl: string;
   colorName?: string | null;
+  colorHex?: string | null;
   sizeName?: string | null;
+  sku?: string | null;
   price: number;
   quantity: number;
   maxStock: number;

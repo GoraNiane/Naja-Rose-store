@@ -40,6 +40,25 @@ export const cartStore = {
     notify();
   },
 
+  addItems: (itemsToAdd: (Omit<CartItem, 'quantity'> & { quantity?: number })[]) => {
+    itemsToAdd.forEach((item) => {
+      const existingIndex = globalItems.findIndex((i) => i.variantId === item.variantId);
+      const qtyToAdd = item.quantity || 1;
+
+      if (existingIndex > -1) {
+        const existing = globalItems[existingIndex];
+        const newQty = Math.min(existing.quantity + qtyToAdd, item.maxStock);
+        globalItems[existingIndex] = { ...existing, quantity: newQty };
+      } else {
+        globalItems.push({
+          ...item,
+          quantity: Math.min(qtyToAdd, item.maxStock),
+        });
+      }
+    });
+    notify();
+  },
+
   updateQuantity: (variantId: string, quantity: number) => {
     if (quantity <= 0) {
       cartStore.removeItem(variantId);
@@ -69,6 +88,10 @@ export const cartStore = {
   getCount: () => {
     return globalItems.reduce((acc, item) => acc + item.quantity, 0);
   },
+
+  getItemsByProduct: (productId: string) => {
+    return globalItems.filter((i) => i.productId === productId);
+  },
 };
 
 export function useCartStore() {
@@ -87,8 +110,10 @@ export function useCartStore() {
     itemCount: cartStore.getCount(),
     subtotal: cartStore.getSubtotal(),
     addItem: cartStore.addItem,
+    addItems: cartStore.addItems,
     updateQuantity: cartStore.updateQuantity,
     removeItem: cartStore.removeItem,
     clearCart: cartStore.clearCart,
+    getItemsByProduct: cartStore.getItemsByProduct,
   };
 }

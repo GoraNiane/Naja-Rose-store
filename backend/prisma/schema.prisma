@@ -82,7 +82,7 @@ model Customer {
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   firstName String
   lastName  String
-  email     String
+  email     String?
   phone     String
   address   String?
   city      String?  @default("Dakar")
