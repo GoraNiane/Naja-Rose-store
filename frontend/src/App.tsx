@@ -72,6 +72,7 @@ export function App() {
 
                 <Route path="checkout/payment-redirect" element={<PaymentRedirectPage />} />
                 <Route path="checkout/success" element={<OrderSuccessPage />} />
+                <Route path="checkout/cancel" element={<InvoicePage />} />
                 <Route path="orders/:id" element={<OrderDetailPage />} />
                 <Route path="orders" element={<OrderDetailPage />} />
                 <Route path="login" element={<Navigate to="/admin/login" replace />} />
