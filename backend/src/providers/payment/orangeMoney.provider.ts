@@ -8,6 +8,7 @@ import {
   WebhookResult,
 } from './payment.interface.js';
 import { ApiError } from '../../utils/apiError.js';
+import { paytechService } from '../../services/paytech.service.js';
 
 export class OrangeMoneyProvider implements PaymentProvider {
   public readonly method: PaymentMethod = PaymentMethod.ORANGE_MONEY;
@@ -36,19 +37,42 @@ export class OrangeMoneyProvider implements PaymentProvider {
       this.clientId.toLowerCase().includes('mock') ||
       process.env.NODE_ENV === 'test';
 
-    if (this.isSandbox) {
-      logger.info(
-        '[Orange Money Senegal] Initialized in SANDBOX / MOCK mode (Official keys not provided or set to test)'
-      );
-    } else {
-      logger.info('[Orange Money Senegal] Initialized in PRODUCTION LIVE mode with official API endpoint');
-    }
+    logger.info('[Orange Money Senegal] Initialized using PayTech unified merchant gateway');
   }
 
   async createPayment(params: CreatePaymentParams): Promise<PaymentResult> {
     logger.info(
       `[Orange Money Senegal] Initiating payment for order ${params.orderNumber} (${params.amount} XOF)`
     );
+
+    // 1. Official PayTech Unified Gateway session (Handles Orange Money Senegal directly to merchant)
+    if (env.PAYTECH_API_KEY && env.PAYTECH_API_SECRET) {
+      logger.info(
+        `[Orange Money Senegal] Creating official PayTech session for merchant NAJA ROSE STORE (Order #${params.orderNumber})`
+      );
+      const paytechResult = await paytechService.createPaymentSession({
+        orderIdOrNumber: params.orderNumber || params.orderId,
+        successUrl: params.successUrl,
+        cancelUrl: params.cancelUrl,
+        ipnUrl: params.webhookUrl,
+      });
+
+      return {
+        transactionId: paytechResult.token,
+        paymentUrl: paytechResult.paymentUrl,
+        launchUrl: paytechResult.redirectUrl,
+        token: paytechResult.token,
+        status: PaymentStatus.PENDING,
+        isSandbox: paytechResult.isSandbox,
+        instructions: `Paiement Orange Money sécurisé via la passerelle officielle PayTech vers le marchand NAJA ROSE STORE`,
+        metadata: {
+          provider: 'ORANGE_MONEY',
+          gateway: 'PAYTECH',
+          redirectUrl: paytechResult.redirectUrl,
+          initiatedAt: new Date().toISOString(),
+        },
+      };
+    }
 
     // 1. Sandbox / Mock mode fallback
     if (this.isSandbox) {

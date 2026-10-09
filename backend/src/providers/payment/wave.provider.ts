@@ -9,6 +9,7 @@ import {
   WebhookResult,
 } from './payment.interface.js';
 import { ApiError } from '../../utils/apiError.js';
+import { paytechService } from '../../services/paytech.service.js';
 
 export class WaveProvider implements PaymentProvider {
   public readonly method: PaymentMethod = PaymentMethod.WAVE;
@@ -33,19 +34,42 @@ export class WaveProvider implements PaymentProvider {
       this.apiKey.toLowerCase().includes('mock') ||
       process.env.NODE_ENV === 'test';
 
-    if (this.isSandbox) {
-      logger.info(
-        '[Wave Senegal] Initialized in SANDBOX / MOCK mode (Official keys not provided or set to test)'
-      );
-    } else {
-      logger.info('[Wave Senegal] Initialized in PRODUCTION LIVE mode with official API endpoint');
-    }
+    logger.info('[Wave Senegal] Initialized using PayTech unified merchant gateway');
   }
 
   async createPayment(params: CreatePaymentParams): Promise<PaymentResult> {
     logger.info(`[Wave Senegal] Initiating payment for order ${params.orderNumber} (${params.amount} XOF)`);
 
-    // 1. Sandbox / Mock mode fallback
+    // 1. Official PayTech Unified Gateway session (Handles Wave Senegal directly to merchant)
+    if (env.PAYTECH_API_KEY && env.PAYTECH_API_SECRET) {
+      logger.info(
+        `[Wave Senegal] Creating official PayTech session for merchant NAJA ROSE STORE (Order #${params.orderNumber})`
+      );
+      const paytechResult = await paytechService.createPaymentSession({
+        orderIdOrNumber: params.orderNumber || params.orderId,
+        successUrl: params.successUrl,
+        cancelUrl: params.cancelUrl,
+        ipnUrl: params.webhookUrl,
+      });
+
+      return {
+        transactionId: paytechResult.token,
+        paymentUrl: paytechResult.paymentUrl,
+        launchUrl: paytechResult.redirectUrl,
+        token: paytechResult.token,
+        status: PaymentStatus.PENDING,
+        isSandbox: paytechResult.isSandbox,
+        instructions: `Paiement Wave sécurisé via la passerelle officielle PayTech vers le marchand NAJA ROSE STORE`,
+        metadata: {
+          provider: 'WAVE',
+          gateway: 'PAYTECH',
+          redirectUrl: paytechResult.redirectUrl,
+          initiatedAt: new Date().toISOString(),
+        },
+      };
+    }
+
+    // 2. Sandbox fallback if PayTech keys missing
     if (this.isSandbox) {
       const mockSessionId = `wave_sess_sbx_${params.orderNumber}_${Date.now()}`;
       const merchantPhone = '221773817191';
