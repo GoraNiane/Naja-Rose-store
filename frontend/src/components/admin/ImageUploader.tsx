@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Upload, X, Star, ArrowLeft, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, X, Star, ArrowLeft, ArrowRight, Loader2, AlertCircle, Link as LinkIcon, Plus } from 'lucide-react';
 import { productService } from '../../services/product.service';
+import { compressImage } from '../../lib/imageCompressor';
 
 export interface UploadedImage {
   url: string;
@@ -16,7 +17,10 @@ interface ImageUploaderProps {
 
 export function ImageUploader({ images, onChange }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState<string>('Téléversement...');
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [customImageUrl, setCustomImageUrl] = useState('');
 
   const maxPhotos = 7;
   const isFull = images.length >= maxPhotos;
@@ -40,13 +44,10 @@ export function ImageUploader({ images, onChange }: ImageUploaderProps) {
         const file = files[i];
         if (newUploadedList.length >= maxPhotos) break;
 
-        // Convert file to base64 data-uri
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        setUploadProgressText(`Optimisation & Envoi (${i + 1}/${files.length})...`);
+
+        // Automatically resize and compress high-resolution photos (prevents HTTP 413)
+        const base64 = await compressImage(file, 1600, 1600, 0.85);
 
         const res = await productService.uploadMedia(base64);
         newUploadedList.push({
@@ -59,12 +60,42 @@ export function ImageUploader({ images, onChange }: ImageUploaderProps) {
 
       onChange(newUploadedList);
     } catch (err: any) {
-      setUploadError(err.message || 'Échec du téléversement de l\'image');
+      console.error('[Image Upload Error]:', err);
+      const is413 = err?.response?.status === 413 || String(err?.message || '').includes('413');
+      if (is413) {
+        setUploadError("L'image était trop volumineuse. Veuillez sélectionner une image standard ou réessayer.");
+      } else {
+        setUploadError(err?.response?.data?.message || err?.message || "Échec de l'envoi de la photo.");
+      }
     } finally {
       setIsUploading(false);
+      setUploadProgressText('Téléversement...');
       // reset file input
       e.target.value = '';
     }
+  };
+
+  const handleAddCustomUrl = () => {
+    const trimmed = customImageUrl.trim();
+    if (!trimmed) return;
+    if (images.length >= maxPhotos) {
+      setUploadError(`Limite atteinte : ${maxPhotos} photos maximum.`);
+      return;
+    }
+
+    const newUploadedList: UploadedImage[] = [
+      ...images,
+      {
+        url: trimmed,
+        publicId: `url_${Date.now()}`,
+        position: images.length,
+        isPrimary: images.length === 0,
+      },
+    ];
+    onChange(newUploadedList);
+    setCustomImageUrl('');
+    setShowUrlInput(false);
+    setUploadError(null);
   };
 
   const setPrimary = (index: number) => {
@@ -114,17 +145,47 @@ export function ImageUploader({ images, onChange }: ImageUploaderProps) {
             Maximum {maxPhotos} photos haute définition. La première ou celle avec l'étoile sera l'image principale.
           </p>
         </div>
-        <span
-          className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-            isFull ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
-          }`}
-        >
-          {images.length} / {maxPhotos} photos
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowUrlInput(!showUrlInput)}
+            className="text-xs font-semibold text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl border border-amber-200 flex items-center gap-1.5 transition-colors"
+          >
+            <LinkIcon className="w-3.5 h-3.5" />
+            <span>{showUrlInput ? 'Fermer URL' : 'Lien URL'}</span>
+          </button>
+          <span
+            className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+              isFull ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+            }`}
+          >
+            {images.length} / {maxPhotos} photos
+          </span>
+        </div>
       </div>
 
+      {showUrlInput && (
+        <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl flex flex-col sm:flex-row items-center gap-2.5">
+          <input
+            type="url"
+            placeholder="Collez ici l'URL de l'image (Cloudinary, Unsplash, etc.)..."
+            value={customImageUrl}
+            onChange={(e) => setCustomImageUrl(e.target.value)}
+            className="flex-1 w-full text-xs px-3.5 py-2.5 bg-white border border-amber-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <button
+            type="button"
+            onClick={handleAddCustomUrl}
+            className="w-full sm:w-auto bg-[#8B3A4A] hover:bg-[#722E3C] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Ajouter l'URL</span>
+          </button>
+        </div>
+      )}
+
       {uploadError && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+        <div className="flex items-center gap-2 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{uploadError}</span>
         </div>
@@ -214,9 +275,11 @@ export function ImageUploader({ images, onChange }: ImageUploaderProps) {
               className="sr-only"
             />
             {isUploading ? (
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2 p-2">
                 <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
-                <span className="text-[11px] text-amber-700 font-medium">Téléversement...</span>
+                <span className="text-[10px] sm:text-[11px] text-amber-700 font-bold leading-tight">
+                  {uploadProgressText}
+                </span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-amber-700">
