@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import {
   LayoutDashboard,
@@ -50,15 +50,10 @@ const NAV_ITEMS = [
 ];
 
 export function AdminLayout() {
-  const { user, isAdmin, logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  // Strict route protection: unauthenticated users are immediately redirected to /admin/login
-  if (!isAdmin) {
-    return <Navigate to="/admin/login" state={{ from: location }} replace />;
-  }
 
   const isNavActive = (item: (typeof NAV_ITEMS)[0]) => {
     if (item.aliases) {

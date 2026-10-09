@@ -3,20 +3,24 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/auth.service';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/ui/Button';
-import { Lock, Mail, ArrowRight, ShieldCheck, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { BrandLogo } from '../components/common/BrandLogo';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setAuth, isAdmin } = useAuthStore();
-  const [email, setEmail] = useState('admin@najarosestore.sn');
-  const [password, setPassword] = useState('AdminPass2026!');
+  const { setAuth } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (emailToUse: string, passToUse: string) => {
+    if (!emailToUse.trim()) {
+      setError('Veuillez renseigner votre adresse email');
+      return;
+    }
     if (!passToUse || passToUse.trim().length === 0) {
       setError('Veuillez renseigner le mot de passe');
       return;
@@ -33,7 +37,7 @@ export function LoginPage() {
           password: passToUse.trim(),
         });
       } catch {
-        // Try fallback to admin-login password endpoint
+        // Fallback to admin-login password endpoint
         res = await authService.adminLogin(passToUse.trim());
       }
 
@@ -87,22 +91,6 @@ export function LoginPage() {
           </div>
         </div>
 
-        {/* Already Authenticated Banner */}
-        {isAdmin && (
-          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-2.5">
-            <p className="text-xs font-semibold text-emerald-800">
-              ✓ Vous êtes déjà authentifié en tant qu'administrateur
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate('/admin/dashboard')}
-              className="w-full py-2 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition-colors"
-            >
-              Accéder au Tableau de Bord Admin →
-            </button>
-          </div>
-        )}
-
         {/* Error Alert */}
         {error && (
           <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium leading-relaxed">
@@ -124,7 +112,7 @@ export function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@najarosestore.sn"
+                placeholder="Votre adresse email"
                 required
                 className="w-full pl-10 pr-4 py-3 bg-[#FAF5F4]/40 hover:bg-[#FAF5F4]/70 focus:bg-white border border-[#F4E2E0] focus:border-[#8B3A4A] rounded-2xl text-sm text-[#2C1E21] font-medium outline-none transition-all shadow-inner"
               />
@@ -143,9 +131,8 @@ export function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Entrez le mot de passe"
+                placeholder="Votre mot de passe"
                 required
-                autoFocus
                 className="w-full pl-10 pr-11 py-3 bg-[#FAF5F4]/40 hover:bg-[#FAF5F4]/70 focus:bg-white border border-[#F4E2E0] focus:border-[#8B3A4A] rounded-2xl text-sm text-[#2C1E21] font-medium outline-none transition-all shadow-inner"
               />
               <button
@@ -170,39 +157,6 @@ export function LoginPage() {
             Se Connecter
           </Button>
         </form>
-
-        {/* 1-Click Fast Unlock with pre-configured credentials */}
-        <div className="pt-2 border-t border-[#F4E2E0]/80">
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('admin@najarosestore.sn');
-              setPassword('AdminPass2026!');
-              handleLogin('admin@najarosestore.sn', 'AdminPass2026!');
-            }}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-[#FAF5F4] hover:bg-[#F5DCD8] border border-[#F4E2E0] text-[#8B3A4A] text-xs font-semibold transition-colors shadow-xs"
-          >
-            <KeyRound className="w-4 h-4 text-[#8B3A4A]" />
-            <span>Déverrouiller avec les identifiants administrateur</span>
-          </button>
-        </div>
-
-        {/* Discreet credentials reminder */}
-        <div className="p-3 rounded-2xl bg-[#FAF5F4] border border-[#F4E2E0] text-center text-[11px] text-[#644D52] space-y-1">
-          <div>
-            <span className="text-[#A0888E]">Email : </span>
-            <code className="font-mono font-bold text-[#8B3A4A] bg-white px-1.5 py-0.5 rounded border border-[#F4E2E0]">
-              admin@najarosestore.sn
-            </code>
-          </div>
-          <div>
-            <span className="text-[#A0888E]">Mot de passe : </span>
-            <code className="font-mono font-bold text-[#8B3A4A] bg-white px-1.5 py-0.5 rounded border border-[#F4E2E0]">
-              AdminPass2026!
-            </code>
-          </div>
-        </div>
       </div>
     </div>
   );
