@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { formatCFA } from '../lib/utils';
 import { Button } from '../components/ui/Button';
@@ -13,6 +13,8 @@ import {
   CreditCard,
   Store,
   FileText,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export function PaymentRedirectPage() {
@@ -26,7 +28,7 @@ export function PaymentRedirectPage() {
   const txId = searchParams.get('txId') || searchParams.get('token') || '';
   const isSandbox = searchParams.get('sandbox') === 'true';
 
-  const [autoRedirected, setAutoRedirected] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
 
   const isWave = method === 'WAVE';
   const isOM = method === 'ORANGE_MONEY';
@@ -36,53 +38,34 @@ export function PaymentRedirectPage() {
   const MERCHANT_PHONE_FORMATTED = '+221 77 381 71 91';
   const MERCHANT_NAME = 'NAJA ROSE STORE';
 
-  // Check if current user is on mobile
-  const isMobile =
-    typeof navigator !== 'undefined' &&
-    /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
-
   // Construct official direct Wave payment link (Sender -> NAJA ROSE STORE)
   const orderMemo = `Commande ${orderNumber || orderId}`;
   const waveDeepLink = `wave://send?phone=${MERCHANT_PHONE_CLEAN}&recipient=${MERCHANT_PHONE_CLEAN}&amount=${amount}&memo=${encodeURIComponent(orderMemo)}`;
-  const waveWebCheckout = `https://pay.wave.com/`;
   const orangeMaxItDeepLink = `maxit://`;
-  const orangeMaxItWeb = `https://maxit.orange.sn/`;
 
-  // On Mobile: Attempt automatic redirection directly into the Wave / Max it app
-  useEffect(() => {
-    if (isWave && isMobile && !autoRedirected) {
-      setAutoRedirected(true);
-      const timer = setTimeout(() => {
-        try {
-          window.location.href = waveDeepLink;
-        } catch {
-          // Handled gracefully
-        }
-      }, 400);
-      return () => clearTimeout(timer);
+  const handleCopyPhone = () => {
+    try {
+      navigator.clipboard.writeText(MERCHANT_PHONE_CLEAN);
+      setCopiedPhone(true);
+      setTimeout(() => setCopiedPhone(false), 3000);
+    } catch {
+      // ignore
     }
-  }, [isWave, isMobile, autoRedirected, waveDeepLink]);
+  };
 
   const handleOpenWaveApp = () => {
     try {
       window.location.href = waveDeepLink;
-      setTimeout(() => {
-        // Only open web backup if wave protocol wasn't handled
-        window.open(waveWebCheckout, '_blank');
-      }, 2500);
     } catch {
-      window.open(waveWebCheckout, '_blank');
+      window.location.href = `wave://`;
     }
   };
 
   const handleOpenOrangeMaxIt = () => {
     try {
       window.location.href = orangeMaxItDeepLink;
-      setTimeout(() => {
-        window.open(orangeMaxItWeb, '_blank');
-      }, 2500);
     } catch {
-      window.open(orangeMaxItWeb, '_blank');
+      window.open('https://maxit.orange.sn/', '_blank');
     }
   };
 
@@ -167,18 +150,38 @@ export function PaymentRedirectPage() {
         {/* Body Content */}
         <div className="p-6 sm:p-8 space-y-6">
           {/* Merchant & Transfer Details Card */}
-          <div className="p-4 rounded-2xl bg-[#FAF5F4] border border-[#F2E5E2] space-y-2 text-xs text-[#644D52]">
+          <div className="p-4 rounded-2xl bg-[#FAF5F4] border border-[#F2E5E2] space-y-3 text-xs text-[#644D52]">
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-1.5 font-medium">
                 <Store className="w-3.5 h-3.5 text-[#8B3A4A]" /> Destinataire marchand :
               </span>
               <span className="font-bold text-[#2C1E21]">{MERCHANT_NAME}</span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center gap-2">
               <span className="flex items-center gap-1.5 font-medium">
                 <Smartphone className="w-3.5 h-3.5 text-[#8B3A4A]" /> Numéro Wave / Orange :
               </span>
-              <span className="font-mono font-bold text-[#2C1E21]">{MERCHANT_PHONE_FORMATTED}</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono font-bold text-[#2C1E21]">{MERCHANT_PHONE_FORMATTED}</span>
+                <button
+                  type="button"
+                  onClick={handleCopyPhone}
+                  className="px-2.5 py-1 bg-white hover:bg-[#FAF0EE] text-[#8B3A4A] border border-[#F4E2E0] rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                  title="Copier le numéro marchand"
+                >
+                  {copiedPhone ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-600" />
+                      <span className="text-emerald-700">Copié !</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>Copier</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-1.5 font-medium">

@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   Info,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
 
 const SAVED_CUSTOMER_KEY = 'naja_saved_customer';
@@ -45,7 +46,7 @@ const checkoutSchema = z.object({
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 
 export function CheckoutPage() {
-  const { items, subtotal, clearCart } = useCartStore();
+  const { items, subtotal, removeItem, clearCart } = useCartStore();
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -439,6 +440,17 @@ export function CheckoutPage() {
                       {formatCFA(item.price * item.quantity)}
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      removeItem(item.variantId);
+                      setSubmitError(null);
+                    }}
+                    className="p-1.5 text-[#A0888E] hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+                    title="Retirer cet article du panier"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>
