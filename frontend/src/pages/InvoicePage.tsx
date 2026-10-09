@@ -462,7 +462,7 @@ export function InvoicePage() {
                 <span>Mode retenu :</span>
                 <span className="font-bold text-[#2C1E21]">
                   {order.paymentMethod === 'PAYTECH'
-                    ? 'PayTech Sénégal (Wave, OM, Carte)'
+                    ? 'Carte Bancaire (Visa / Mastercard)'
                     : order.paymentMethod === 'WAVE'
                     ? 'Wave Sénégal'
                     : order.paymentMethod === 'ORANGE_MONEY'
@@ -539,69 +539,7 @@ export function InvoicePage() {
 
           {/* Payment Method Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 1. PayTech (Primary & Aggregator) */}
-            <label
-              onClick={() => setSelectedMethod('PAYTECH')}
-              className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 md:col-span-2 ${
-                selectedMethod === 'PAYTECH'
-                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
-                  : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-[#8B3A4A] text-white flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
-                    💳
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-bold text-base text-[#2C1E21]">
-                        Passerelle Officielle PayTech Sénégal
-                      </p>
-                      <span className="text-[10px] font-bold text-[#8B3A4A] bg-[#FAF2F0] border border-[#F4E2E0] px-2.5 py-0.5 rounded-full">
-                        ✨ Recommandé (Multi-opérateurs)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2 flex-wrap">
-                      <div className="flex items-center gap-1.5 bg-white border border-[#E8D5D8] px-2 py-1 rounded-lg shadow-2xs">
-                        <img
-                          src="/images/payments/wave-logo.jpg"
-                          alt="Wave Sénégal"
-                          className="w-4 h-4 rounded-full object-cover shrink-0"
-                        />
-                        <span className="text-[11px] font-bold text-[#1E293B]">Wave</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-white border border-[#E8D5D8] px-2 py-1 rounded-lg shadow-2xs">
-                        <img
-                          src="/images/payments/orange-money-logo.jpg"
-                          alt="Orange Money"
-                          className="w-4 h-4 rounded-md object-contain shrink-0"
-                        />
-                        <span className="text-[11px] font-bold text-[#1E293B]">Orange Money</span>
-                      </div>
-                      <span className="text-[11px] font-semibold text-purple-900 bg-purple-50 border border-purple-200 px-2 py-1 rounded-lg">
-                        🟣 Free Money
-                      </span>
-                      <span className="text-[11px] font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
-                        💳 Carte Bancaire
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  checked={selectedMethod === 'PAYTECH'}
-                  onChange={() => setSelectedMethod('PAYTECH')}
-                  className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
-                />
-              </div>
-              <p className="text-[11px] text-[#7A6469] leading-relaxed pt-1">
-                Règlement immédiat et sécurisé via la passerelle PayTech. Vous pourrez choisir Wave, Orange Money, Free Money ou Carte Bancaire avec confirmation automatique instantanée.
-              </p>
-            </label>
-
-            {/* 2. Wave Direct */}
+            {/* 1. Wave Direct */}
             <label
               onClick={() => setSelectedMethod('WAVE')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
@@ -633,11 +571,11 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Validation directe avec votre compte Wave par QR code ou notification mobile.
+                Validation directe et instantanée avec votre compte Wave (via QR code ou application mobile).
               </p>
             </label>
 
-            {/* 3. Orange Money Direct */}
+            {/* 2. Orange Money Direct */}
             <label
               onClick={() => setSelectedMethod('ORANGE_MONEY')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
@@ -671,7 +609,56 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Paiement via votre compte Orange Money Sénégal avec code de confirmation OTP.
+                Paiement sécurisé via votre compte Orange Money Sénégal avec code de validation OTP (#144#391#).
+              </p>
+            </label>
+
+            {/* 3. Carte Bancaire (Visa / Mastercard) */}
+            <label
+              onClick={() => setSelectedMethod('PAYTECH')}
+              className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 md:col-span-2 ${
+                selectedMethod === 'PAYTECH'
+                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
+                  : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-[#8B3A4A] text-white flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
+                    <CreditCard className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-base text-[#2C1E21]">
+                        Carte Bancaire (Visa / Mastercard)
+                      </p>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                        🔒 3D-Secure Sécurisé
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2 flex-wrap">
+                      <div className="flex items-center gap-1 bg-[#1A1F71] text-white font-bold text-[11px] px-2.5 py-0.5 rounded tracking-wider shadow-2xs">
+                        VISA
+                      </div>
+                      <div className="flex items-center gap-1 bg-[#EB001B] text-white font-bold text-[11px] px-2.5 py-0.5 rounded tracking-wider shadow-2xs">
+                        Mastercard
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                        Cartes Internationales
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  checked={selectedMethod === 'PAYTECH'}
+                  onChange={() => setSelectedMethod('PAYTECH')}
+                  className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
+                />
+              </div>
+              <p className="text-[11px] text-[#7A6469] leading-relaxed pt-1">
+                Paiement en ligne instantané et 100% sécurisé par carte bancaire Visa, Mastercard ou carte prépayée avec protection 3D Secure.
               </p>
             </label>
 
@@ -705,7 +692,7 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Réglez en main propre à la réception de votre colis par notre coursier à Dakar.
+                Réglez en main propre à la réception de votre colis par notre coursier à Dakar (en espèces ou par Wave).
               </p>
             </label>
           </div>
@@ -731,7 +718,7 @@ export function InvoicePage() {
               {initiatePaymentMutation.isPending ? (
                 <span>Connexion sécurisée en cours...</span>
               ) : selectedMethod === 'PAYTECH' ? (
-                <span>Payer maintenant avec PayTech ({formatCFA(order.total)})</span>
+                <span>Payer par Carte Visa / Mastercard ({formatCFA(order.total)})</span>
               ) : selectedMethod === 'WAVE' ? (
                 <span>Payer avec Wave ({formatCFA(order.total)})</span>
               ) : selectedMethod === 'ORANGE_MONEY' ? (

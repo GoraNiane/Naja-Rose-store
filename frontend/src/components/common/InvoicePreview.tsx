@@ -82,8 +82,8 @@ export function InvoicePreview({
     switch (method) {
       case 'PAYTECH':
         return {
-          name: 'Passerelle PayTech (Wave, Orange Money, Free Money, Carte)',
-          badge: 'PayTech 100% Sécurisé',
+          name: 'Carte Bancaire (Visa / Mastercard)',
+          badge: 'Paiement Sécurisé 3DS',
           color: 'bg-[#FAF2F0] text-[#8B3A4A] border-[#F4E2E0]',
         };
       case 'WAVE':

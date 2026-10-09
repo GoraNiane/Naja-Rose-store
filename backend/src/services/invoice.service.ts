@@ -1,4 +1,4 @@
-import PDFDocument from 'pdfkit';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { Prisma, PaymentStatus } from '@prisma/client';
 import { invoiceRepository } from '../repositories/invoice.repository.js';
 import { ApiError } from '../utils/apiError.js';
@@ -50,10 +50,23 @@ export interface InvoiceOrderData {
   } | null;
 }
 
+function cleanPdfText(text: string | null | undefined): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/[\u202F\u00A0\u2000-\u200B]/g, ' ')
+    .replace(/[•●]/g, '-')
+    .replace(/[—–]/g, '-')
+    .replace(/[’‘]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[^\x00-\xFF]/g, '');
+}
+
 function formatCurrency(amount: Prisma.Decimal | number | string | undefined | null): string {
   if (amount === undefined || amount === null) return '0 FCFA';
   const num = Number(amount);
-  return `${new Intl.NumberFormat('fr-FR').format(isNaN(num) ? 0 : Math.round(num))} FCFA`;
+  const rounded = Math.round(isNaN(num) ? 0 : num);
+  const formatted = rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return `${formatted} FCFA`;
 }
 
 function formatDate(date: Date | string | undefined | null): string {
@@ -64,7 +77,7 @@ function formatDate(date: Date | string | undefined | null): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(date));
+  }).format(new Date(date)).replace(/[\u202F\u00A0]/g, ' ');
 }
 
 export class InvoiceService {
@@ -95,192 +108,361 @@ export class InvoiceService {
     return invoiceRepository.findMany(params);
   }
 
+  /**
+   * Generates a 100% in-memory A4 PDF invoice buffer using pdf-lib (Zero external font filesystem dependency)
+   */
   async generatePdfBuffer(order: InvoiceOrderData): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({
-        size: 'A4',
-        margin: 40,
-        info: {
-          Title: `Facture_${order.invoice?.invoiceNumber || order.orderNumber}`,
-          Author: 'NAJA ROSE STORE Dakar',
-          Subject: `Facture de commande ${order.orderNumber} - NAJA ROSE STORE`,
-          Keywords: 'Naja Rose Store, Facture, Dakar, Mode, Prêt-à-porter',
-        },
-      });
+    const pdfDoc = await PDFDocument.create();
 
-      const buffers: Buffer[] = [];
-      doc.on('data', (chunk) => buffers.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(buffers)));
-      doc.on('error', (err) => reject(err));
+    // Standard high-performance embedded fonts (No filesystem read needed on Vercel)
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-      // Palette de couleurs officielle Naja Rose Store
-      const colorPowderRose = '#D8A7A7'; // Rose poudré
-      const colorLightRose = '#F7EEEE';  // Rose clair
-      const colorRoseBeige = '#E8CFCF';  // Beige rosé
-      const colorOffWhite = '#FAF9F7';   // Blanc cassé
-      const colorSoftDark = '#242020';   // Noir doux
-      const colorMutedGray = '#77706D';  // Gris secondaire
+    const page = pdfDoc.addPage([595.28, 841.89]); // A4 Size in points
+    const { width, height } = page.getSize();
 
-      // 1. Header Banner
-      doc.rect(40, 40, 515, 82).fill(colorSoftDark);
+    // Palette Couleurs Naja Rose Store
+    const cPrimary = rgb(139 / 255, 58 / 255, 74 / 255);       // #8B3A4A
+    const cDark = rgb(44 / 255, 30 / 255, 33 / 255);            // #2C1E21
+    const cRoseLight = rgb(250 / 255, 242 / 255, 240 / 255);    // #FAF2F0
+    const cRoseBorder = rgb(232 / 255, 207 / 255, 207 / 255);   // #E8CFCF
+    const cTextMuted = rgb(122 / 255, 100 / 255, 105 / 255);    // #7A6469
+    const cWhite = rgb(1, 1, 1);
+    const cZebra = rgb(250 / 255, 249 / 255, 247 / 255);
 
-      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('NAJA ROSE STORE', 60, 56);
-      doc.fontSize(9).font('Helvetica').fillColor(colorPowderRose).text('ÉLÉGANCE STYLE GARANTIES • PRÊT-À-PORTER FÉMININ • DAKAR', 60, 81);
-      doc.fontSize(8).font('Helvetica').fillColor('#E5DCDA').text('Showroom Dakar, Sénégal | WhatsApp : +221 77 381 71 91', 60, 96);
-
-      doc.fillColor('#FFFFFF').fontSize(16).font('Helvetica-Bold').text('FACTURE', 400, 56, { align: 'right', width: 135 });
-      const invoiceNumber = order.invoice?.invoiceNumber || `NRS-${new Date().getFullYear()}-000000`;
-      doc.fontSize(9).font('Helvetica-Bold').fillColor(colorPowderRose).text(invoiceNumber, 400, 76, { align: 'right', width: 135 });
-      doc.fontSize(8).font('Helvetica').fillColor('#E5DCDA').text(formatDate(order.createdAt), 400, 91, { align: 'right', width: 135 });
-
-      // 2. Client & Delivery Destination Information Cards
-      const startY = 138;
-      const customerFullName = order.customer
-        ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() || 'Client Naja Rose'
-        : 'Client Naja Rose';
-      const customerPhone = order.phone || order.customer?.phone || '+221';
-      const customerEmail = order.email || order.customer?.email || '';
-
-      // Left Box: Facturé à (Client)
-      doc.roundedRect(40, startY, 250, 96, 6).fillAndStroke(colorLightRose, colorRoseBeige);
-      doc.fillColor(colorSoftDark).fontSize(9.5).font('Helvetica-Bold').text('CLIENT FACTURÉ', 52, startY + 10);
-      doc.fillColor(colorSoftDark).fontSize(10).font('Helvetica-Bold').text(customerFullName, 52, startY + 24);
-      doc.fillColor(colorMutedGray).fontSize(8.5).font('Helvetica');
-      doc.text(`Tél : ${customerPhone}`, 52, startY + 39);
-      if (customerEmail) {
-        doc.text(`Email : ${customerEmail}`, 52, startY + 52);
-      }
-      doc.fillColor(colorSoftDark).font('Helvetica-Bold').text(`Commande N° : ${order.orderNumber}`, 52, startY + 68);
-
-      // Right Box: Lieu & Zone de Livraison
-      doc.roundedRect(305, startY, 250, 96, 6).fillAndStroke(colorLightRose, colorRoseBeige);
-      doc.fillColor(colorSoftDark).fontSize(9.5).font('Helvetica-Bold').text('DESTINATION DE LIVRAISON', 317, startY + 10);
-      doc.fillColor(colorSoftDark).fontSize(9).font('Helvetica-Bold').text(`Zone : ${order.deliveryZone?.name || 'Dakar'}`, 317, startY + 24);
-      doc.fillColor(colorMutedGray).fontSize(8.5).font('Helvetica');
-      doc.text(`Adresse : ${order.deliveryAddress || 'Dakar'}`, 317, startY + 39, { width: 225 });
-      if (order.notes) {
-        doc.text(`Point de repère : ${order.notes}`, 317, startY + 66, { width: 225 });
-      }
-
-      // 3. Products Table
-      let tableY = 250;
-      doc.rect(40, tableY, 515, 24).fill(colorSoftDark);
-
-      doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
-      doc.text('ARTICLE & DÉSIGNATION', 50, tableY + 8);
-      doc.text('COULEUR', 240, tableY + 8);
-      doc.text('TAILLE', 310, tableY + 8);
-      doc.text('QTÉ', 360, tableY + 8, { width: 30, align: 'center' });
-      doc.text('PRIX UNIT.', 400, tableY + 8, { width: 70, align: 'right' });
-      doc.text('TOTAL', 480, tableY + 8, { width: 65, align: 'right' });
-
-      tableY += 24;
-
-      // Table rows
-      (order.items || []).forEach((item, index) => {
-        // Page break safety check
-        if (tableY > 680) {
-          doc.addPage();
-          tableY = 50;
-          // Re-draw table header on new page
-          doc.rect(40, tableY, 515, 24).fill(colorSoftDark);
-          doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold');
-          doc.text('ARTICLE & DÉSIGNATION', 50, tableY + 8);
-          doc.text('COULEUR', 240, tableY + 8);
-          doc.text('TAILLE', 310, tableY + 8);
-          doc.text('QTÉ', 360, tableY + 8, { width: 30, align: 'center' });
-          doc.text('PRIX UNIT.', 400, tableY + 8, { width: 70, align: 'right' });
-          doc.text('TOTAL', 480, tableY + 8, { width: 65, align: 'right' });
-          tableY += 24;
-        }
-
-        const isEven = index % 2 === 0;
-        doc.rect(40, tableY, 515, 26).fill(isEven ? '#FFFFFF' : colorOffWhite);
-        doc.rect(40, tableY, 515, 26).stroke(colorRoseBeige);
-
-        doc.fillColor(colorSoftDark).fontSize(8.5).font('Helvetica-Bold');
-        doc.text(item.productName || 'Article Naja Rose', 50, tableY + 8, { width: 185, lineBreak: false });
-
-        doc.font('Helvetica').fontSize(8).fillColor(colorMutedGray);
-        doc.text(item.colorName || '-', 240, tableY + 9);
-        doc.text(item.sizeName || '-', 310, tableY + 9);
-        doc.text(String(item.quantity || 1), 360, tableY + 9, { width: 30, align: 'center' });
-        doc.text(formatCurrency(item.unitPrice), 400, tableY + 9, { width: 70, align: 'right' });
-
-        doc.font('Helvetica-Bold').fillColor(colorSoftDark);
-        doc.text(formatCurrency(item.total), 480, tableY + 9, { width: 65, align: 'right' });
-
-        tableY += 26;
-      });
-
-      // 4. Totals Breakdown & Payment Info
-      tableY += 14;
-      if (tableY > 640) {
-        doc.addPage();
-        tableY = 50;
-      }
-
-      const payMethodLabel =
-        order.paymentMethod === 'WAVE'
-          ? 'Wave Sénégal (Paiement Mobile 100% Sécurisé)'
-          : order.paymentMethod === 'ORANGE_MONEY'
-          ? 'Orange Money Sénégal (WebPay)'
-          : 'Paiement à la Livraison (Espèces ou Wave)';
-
-      const paymentStatusLabel =
-        order.paymentStatus === 'PAID'
-          ? 'PAYÉ / VALIDÉ'
-          : order.paymentStatus === 'FAILED'
-          ? 'ÉCHEC DE PAIEMENT'
-          : 'EN ATTENTE DE PAIEMENT';
-
-      // Payment Details (Left Box)
-      doc.roundedRect(40, tableY, 260, 95, 6).fillAndStroke(colorLightRose, colorRoseBeige);
-      doc.fillColor(colorSoftDark).fontSize(9.5).font('Helvetica-Bold').text('RÈGLEMENT & STATUTS', 52, tableY + 10);
-      doc.fillColor(colorSoftDark).fontSize(8.5).font('Helvetica').text(`Mode : ${payMethodLabel}`, 52, tableY + 26, { width: 235 });
-      doc.text(`Statut paiement : ${paymentStatusLabel}`, 52, tableY + 50);
-      doc.text(`Statut commande : ${order.status === 'NEW' ? 'En attente' : order.status}`, 52, tableY + 65);
-
-      if (order.paymentMethod === 'CASH_ON_DELIVERY') {
-        doc.fillColor(colorSoftDark).fontSize(8.5).font('Helvetica-Bold').text(
-          `MONTANT À REMETTRE : ${formatCurrency(order.total)}`,
-          52,
-          tableY + 79
-        );
-      }
-
-      // Totals (Right Box)
-      doc.roundedRect(315, tableY, 240, 95, 6).fillAndStroke(colorLightRose, colorRoseBeige);
-      doc.fillColor(colorMutedGray).fontSize(8.5).font('Helvetica');
-      doc.text('Sous-total vêtements :', 327, tableY + 12);
-      doc.fillColor(colorSoftDark).font('Helvetica-Bold').text(formatCurrency(order.subtotal), 430, tableY + 12, { width: 115, align: 'right' });
-
-      doc.fillColor(colorMutedGray).font('Helvetica').text(`Frais de livraison (${order.deliveryZone?.name || 'Dakar'}) :`, 327, tableY + 30);
-      doc.fillColor(colorSoftDark).font('Helvetica-Bold').text(formatCurrency(order.deliveryFee), 430, tableY + 30, { width: 115, align: 'right' });
-
-      doc.moveTo(327, tableY + 50).lineTo(545, tableY + 50).stroke(colorPowderRose);
-
-      doc.fillColor(colorSoftDark).fontSize(10.5).font('Helvetica-Bold').text('TOTAL NET TTC :', 327, tableY + 63);
-      doc.fillColor(colorSoftDark).fontSize(12.5).font('Helvetica-Bold').text(formatCurrency(order.total), 430, tableY + 61, { width: 115, align: 'right' });
-
-      // 5. Footer & Legal
-      const footerY = 745;
-      doc.moveTo(40, footerY).lineTo(555, footerY).stroke(colorRoseBeige);
-      doc.fillColor(colorSoftDark).fontSize(8.5).font('Helvetica-Bold').text(
-        'NAJA ROSE STORE SÉNÉGAL — Elegance Style Garanties',
-        40,
-        footerY + 9,
-        { align: 'center', width: 515 }
-      );
-      doc.fillColor(colorMutedGray).fontSize(7.5).font('Helvetica').text(
-        'Facture émise automatiquement par NAJA ROSE STORE • Dakar, Sénégal | WhatsApp : +221 77 381 71 91',
-        40,
-        footerY + 22,
-        { align: 'center', width: 515 }
-      );
-
-      doc.end();
+    // 1. Header Banner Box
+    const headerTop = height - 40;
+    const headerH = 75;
+    page.drawRectangle({
+      x: 35,
+      y: headerTop - headerH,
+      width: width - 70,
+      height: headerH,
+      color: cDark,
     });
+
+    // Brand Name & Subtitle
+    page.drawText(cleanPdfText('NAJA ROSE STORE'), {
+      x: 55,
+      y: headerTop - 30,
+      size: 20,
+      font: fontBold,
+      color: cWhite,
+    });
+    page.drawText(cleanPdfText('ELEGANCE STYLE GARANTIES - PRET-A-PORTER FEMININ - DAKAR'), {
+      x: 55,
+      y: headerTop - 46,
+      size: 8,
+      font: fontRegular,
+      color: rgb(216 / 255, 167 / 255, 167 / 255),
+    });
+    page.drawText(cleanPdfText('Showroom Dakar, Senegal | WhatsApp : +221 77 381 71 91'), {
+      x: 55,
+      y: headerTop - 60,
+      size: 7.5,
+      font: fontRegular,
+      color: rgb(229 / 255, 220 / 255, 218 / 255),
+    });
+
+    // Invoice Title & Ref (Right aligned)
+    const invoiceNum = order.invoice?.invoiceNumber || `NRS-${new Date().getFullYear()}-000000`;
+    page.drawText(cleanPdfText('FACTURE OFFICIELLE'), {
+      x: width - 210,
+      y: headerTop - 28,
+      size: 13,
+      font: fontBold,
+      color: cWhite,
+    });
+    page.drawText(cleanPdfText(invoiceNum), {
+      x: width - 210,
+      y: headerTop - 44,
+      size: 9.5,
+      font: fontBold,
+      color: rgb(216 / 255, 167 / 255, 167 / 255),
+    });
+    page.drawText(cleanPdfText(`Date : ${formatDate(order.createdAt)}`), {
+      x: width - 210,
+      y: headerTop - 58,
+      size: 8,
+      font: fontRegular,
+      color: rgb(229 / 255, 220 / 255, 218 / 255),
+    });
+
+    // 2. Info Cards (Client & Delivery)
+    const cardY = headerTop - headerH - 18;
+    const cardH = 88;
+    const cardW = (width - 70 - 15) / 2;
+
+    // Card Left: Client
+    page.drawRectangle({
+      x: 35,
+      y: cardY - cardH,
+      width: cardW,
+      height: cardH,
+      color: cRoseLight,
+      borderColor: cRoseBorder,
+      borderWidth: 1,
+    });
+
+    page.drawText(cleanPdfText('CLIENT FACTURE'), {
+      x: 47,
+      y: cardY - 18,
+      size: 8.5,
+      font: fontBold,
+      color: cPrimary,
+    });
+
+    const customerName = order.customer
+      ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() || 'Client Naja Rose'
+      : 'Client Naja Rose';
+
+    page.drawText(cleanPdfText(customerName), {
+      x: 47,
+      y: cardY - 33,
+      size: 9.5,
+      font: fontBold,
+      color: cDark,
+    });
+    page.drawText(cleanPdfText(`Telephone : ${order.phone || order.customer?.phone || '+221'}`), {
+      x: 47,
+      y: cardY - 48,
+      size: 8,
+      font: fontRegular,
+      color: cTextMuted,
+    });
+    if (order.email || order.customer?.email) {
+      page.drawText(cleanPdfText(`Email : ${order.email || order.customer?.email}`), {
+        x: 47,
+        y: cardY - 60,
+        size: 7.5,
+        font: fontRegular,
+        color: cTextMuted,
+      });
+    }
+    page.drawText(cleanPdfText(`Commande Ref : ${order.orderNumber}`), {
+      x: 47,
+      y: cardY - 74,
+      size: 8,
+      font: fontBold,
+      color: cDark,
+    });
+
+    // Card Right: Delivery
+    const rightX = 35 + cardW + 15;
+    page.drawRectangle({
+      x: rightX,
+      y: cardY - cardH,
+      width: cardW,
+      height: cardH,
+      color: cRoseLight,
+      borderColor: cRoseBorder,
+      borderWidth: 1,
+    });
+
+    page.drawText(cleanPdfText('DESTINATION DE LIVRAISON'), {
+      x: rightX + 12,
+      y: cardY - 18,
+      size: 8.5,
+      font: fontBold,
+      color: cPrimary,
+    });
+    page.drawText(cleanPdfText(`Zone : ${order.deliveryZone?.name || 'Dakar'}`), {
+      x: rightX + 12,
+      y: cardY - 33,
+      size: 9,
+      font: fontBold,
+      color: cDark,
+    });
+    page.drawText(cleanPdfText(`Adresse : ${(order.deliveryAddress || 'Dakar').substring(0, 48)}`), {
+      x: rightX + 12,
+      y: cardY - 48,
+      size: 8,
+      font: fontRegular,
+      color: cTextMuted,
+    });
+    if (order.notes) {
+      page.drawText(cleanPdfText(`Repere : ${order.notes.substring(0, 48)}`), {
+        x: rightX + 12,
+        y: cardY - 62,
+        size: 7.5,
+        font: fontRegular,
+        color: cTextMuted,
+      });
+    }
+
+    // 3. Products Table
+    let tableY = cardY - cardH - 22;
+    const thHeight = 22;
+
+    page.drawRectangle({
+      x: 35,
+      y: tableY - thHeight,
+      width: width - 70,
+      height: thHeight,
+      color: cDark,
+    });
+
+    page.drawText(cleanPdfText('ARTICLE & DESIGNATION'), { x: 45, y: tableY - 15, size: 7.5, font: fontBold, color: cWhite });
+    page.drawText(cleanPdfText('COULEUR'), { x: 235, y: tableY - 15, size: 7.5, font: fontBold, color: cWhite });
+    page.drawText(cleanPdfText('TAILLE'), { x: 310, y: tableY - 15, size: 7.5, font: fontBold, color: cWhite });
+    page.drawText(cleanPdfText('QTE'), { x: 365, y: tableY - 15, size: 7.5, font: fontBold, color: cWhite });
+    page.drawText(cleanPdfText('PRIX UNIT.'), { x: 410, y: tableY - 15, size: 7.5, font: fontBold, color: cWhite });
+    page.drawText(cleanPdfText('TOTAL'), { x: 495, y: tableY - 15, size: 7.5, font: fontBold, color: cWhite });
+
+    tableY -= thHeight;
+
+    const rowH = 22;
+    (order.items || []).forEach((item, index) => {
+      const isEven = index % 2 === 0;
+      page.drawRectangle({
+        x: 35,
+        y: tableY - rowH,
+        width: width - 70,
+        height: rowH,
+        color: isEven ? cWhite : cZebra,
+        borderColor: cRoseBorder,
+        borderWidth: 0.5,
+      });
+
+      const productName = cleanPdfText((item.productName || 'Article Naja Rose').substring(0, 32));
+      page.drawText(productName, { x: 45, y: tableY - 15, size: 8, font: fontBold, color: cDark });
+      page.drawText(cleanPdfText((item.colorName || '-').substring(0, 14)), { x: 235, y: tableY - 15, size: 7.5, font: fontRegular, color: cTextMuted });
+      page.drawText(cleanPdfText((item.sizeName || '-').substring(0, 8)), { x: 310, y: tableY - 15, size: 7.5, font: fontRegular, color: cTextMuted });
+      page.drawText(cleanPdfText(String(item.quantity || 1)), { x: 370, y: tableY - 15, size: 7.5, font: fontBold, color: cDark });
+      page.drawText(cleanPdfText(formatCurrency(item.unitPrice)), { x: 410, y: tableY - 15, size: 7.5, font: fontRegular, color: cTextMuted });
+      page.drawText(cleanPdfText(formatCurrency(item.total)), { x: 495, y: tableY - 15, size: 8, font: fontBold, color: cDark });
+
+      tableY -= rowH;
+    });
+
+    // 4. Totals & Payment Summary Box
+    tableY -= 16;
+    const sumH = 88;
+
+    // Left summary (Payment method)
+    page.drawRectangle({
+      x: 35,
+      y: tableY - sumH,
+      width: 260,
+      height: sumH,
+      color: cRoseLight,
+      borderColor: cRoseBorder,
+      borderWidth: 1,
+    });
+
+    page.drawText(cleanPdfText('REGLEMENT & STATUTS'), {
+      x: 47,
+      y: tableY - 18,
+      size: 8.5,
+      font: fontBold,
+      color: cPrimary,
+    });
+
+    const payLabel =
+      order.paymentMethod === 'WAVE'
+        ? 'Wave Senegal (Paiement Mobile Direct)'
+        : order.paymentMethod === 'ORANGE_MONEY'
+        ? 'Orange Money Senegal (WebPay)'
+        : order.paymentMethod === 'PAYTECH'
+        ? 'Carte Bancaire Visa / Mastercard'
+        : 'Paiement a la Livraison (Especes / Wave)';
+
+    page.drawText(cleanPdfText(`Moyen : ${payLabel.substring(0, 36)}`), {
+      x: 47,
+      y: tableY - 34,
+      size: 7.5,
+      font: fontRegular,
+      color: cDark,
+    });
+
+    const statusLabel =
+      order.paymentStatus === 'PAID'
+        ? 'PAYE / CONFIRME'
+        : order.paymentStatus === 'FAILED'
+        ? 'ECHEC DE PAIEMENT'
+        : 'EN ATTENTE DE PAIEMENT';
+
+    page.drawText(cleanPdfText(`Statut paiement : ${statusLabel}`), {
+      x: 47,
+      y: tableY - 48,
+      size: 7.5,
+      font: fontBold,
+      color: order.paymentStatus === 'PAID' ? rgb(16 / 255, 120 / 255, 60 / 255) : cPrimary,
+    });
+
+    page.drawText(cleanPdfText(`Statut commande : ${order.status === 'NEW' ? 'Enregistree' : order.status}`), {
+      x: 47,
+      y: tableY - 62,
+      size: 7.5,
+      font: fontRegular,
+      color: cTextMuted,
+    });
+
+    if (order.paymentMethod === 'CASH_ON_DELIVERY') {
+      page.drawText(cleanPdfText(`MONTANT A REMETTRE : ${formatCurrency(order.total)}`), {
+        x: 47,
+        y: tableY - 76,
+        size: 8,
+        font: fontBold,
+        color: cDark,
+      });
+    }
+
+    // Right summary (Financial totals)
+    const totX = 310;
+    const totW = width - 70 - 275;
+    page.drawRectangle({
+      x: totX,
+      y: tableY - sumH,
+      width: totW,
+      height: sumH,
+      color: cRoseLight,
+      borderColor: cRoseBorder,
+      borderWidth: 1,
+    });
+
+    page.drawText(cleanPdfText('Sous-total articles :'), { x: totX + 12, y: tableY - 20, size: 8, font: fontRegular, color: cTextMuted });
+    page.drawText(cleanPdfText(formatCurrency(order.subtotal)), { x: totX + totW - 90, y: tableY - 20, size: 8, font: fontBold, color: cDark });
+
+    page.drawText(cleanPdfText(`Livraison (${order.deliveryZone?.name || 'Dakar'}) :`), { x: totX + 12, y: tableY - 36, size: 8, font: fontRegular, color: cTextMuted });
+    page.drawText(cleanPdfText(formatCurrency(order.deliveryFee)), { x: totX + totW - 90, y: tableY - 36, size: 8, font: fontBold, color: cDark });
+
+    page.drawLine({
+      start: { x: totX + 12, y: tableY - 50 },
+      end: { x: totX + totW - 12, y: tableY - 50 },
+      color: cRoseBorder,
+      thickness: 1,
+    });
+
+    page.drawText(cleanPdfText('TOTAL NET TTC :'), { x: totX + 12, y: tableY - 68, size: 9.5, font: fontBold, color: cPrimary });
+    page.drawText(cleanPdfText(formatCurrency(order.total)), { x: totX + totW - 95, y: tableY - 68, size: 11, font: fontBold, color: cPrimary });
+
+    // 5. Footer & Authenticity Notice
+    const footerY = 55;
+    page.drawLine({
+      start: { x: 35, y: footerY + 20 },
+      end: { x: width - 35, y: footerY + 20 },
+      color: cRoseBorder,
+      thickness: 1,
+    });
+
+    page.drawText(cleanPdfText('NAJA ROSE STORE SENEGAL - Elegance Style Garanties'), {
+      x: 35,
+      y: footerY + 8,
+      size: 8,
+      font: fontBold,
+      color: cDark,
+    });
+    page.drawText(cleanPdfText('Facture certifiee emise par NAJA ROSE STORE - Showroom Dakar, Senegal | WhatsApp : +221 77 381 71 91'), {
+      x: 35,
+      y: footerY - 4,
+      size: 7,
+      font: fontRegular,
+      color: cTextMuted,
+    });
+
+    const pdfBytes = await pdfDoc.save();
+    return Buffer.from(pdfBytes);
   }
 }
 
