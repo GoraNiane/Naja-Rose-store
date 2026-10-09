@@ -1,0 +1,60 @@
+{
+  "name": "Naja Rose Store | Mode & Élégance Dakar",
+  "short_name": "Naja Rose",
+  "description": "Boutique de prêt-à-porter féminin et créations de luxe à Dakar, Sénégal. Des vêtements qui révèlent la meilleure version de vous.",
+  "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FAF7F6",
+  "theme_color": "#8B3A4A",
+  "lang": "fr-SN",
+  "dir": "ltr",
+  "categories": ["shopping", "lifestyle", "fashion"],
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Accueil",
+      "short_name": "Accueil",
+      "description": "Retour à la page d'accueil",
+      "url": "/",
+      "icons": [{ "src": "/logo.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Boutique",
+      "short_name": "Boutique",
+      "description": "Découvrir tous les articles",
+      "url": "/shop",
+      "icons": [{ "src": "/logo.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Catégories",
+      "short_name": "Catégories",
+      "description": "Explorer les collections",
+      "url": "/categories",
+      "icons": [{ "src": "/logo.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Mon Panier",
+      "short_name": "Panier",
+      "description": "Accéder à votre panier",
+      "url": "/cart",
+      "icons": [{ "src": "/logo.svg", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false
+}

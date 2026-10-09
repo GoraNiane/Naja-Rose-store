@@ -218,7 +218,9 @@ export function HomePage() {
           <img
             src="/images/hero-boutique.jpg"
             alt="Naja Rose Store Boutique Intérieur Dakar"
-            className="w-full h-full object-cover object-center md:object-right"
+            className="w-full h-full object-cover object-center md:object-right transform-gpu"
+            fetchPriority="high"
+            decoding="async"
           />
           {/* Seamless gradient fade from left blush pink to boutique photo */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#FAF2F0] via-[#FAF2F0]/85 to-transparent sm:w-1/2" />
@@ -353,8 +355,9 @@ export function HomePage() {
               <img
                 src={cat.imageUrl}
                 alt={cat.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out transform-gpu"
                 loading="lazy"
+                decoding="async"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
 

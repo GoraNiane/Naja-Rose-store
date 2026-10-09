@@ -1,11 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-  <rect width="100" height="100" rx="24" fill="#1A1816"/>
-  <path d="M28 72V28L54 60V28H72V72L46 40V72H28Z" fill="url(#goldGradient)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="goldGradient" x1="28" y1="28" x2="72" y2="72" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F59E0B"/>
-      <stop offset="0.5" stop-color="#D97706"/>
-      <stop offset="1" stop-color="#92400E"/>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3A2228"/>
+      <stop offset="50%" stop-color="#54202B"/>
+      <stop offset="100%" stop-color="#8B3A4A"/>
     </linearGradient>
+    <linearGradient id="roseGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCEAE9"/>
+      <stop offset="50%" stop-color="#F2C7C4"/>
+      <stop offset="100%" stop-color="#E7A8B4"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
   </defs>
+
+  <!-- Background Rounded Rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle decorative inner border -->
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="url(#roseGold)" stroke-width="2" opacity="0.35"/>
+
+  <!-- Brand Typography / Monogram -->
+  <g filter="url(#shadow)">
+    <!-- Monogram NR -->
+    <text x="256" y="270" font-family="'Playfair Display', Georgia, serif" font-size="160" font-style="italic" font-weight="700" fill="url(#roseGold)" text-anchor="middle">
+      NR
+    </text>
+    
+    <!-- Brand Label -->
+    <text x="256" y="340" font-family="'Inter', -apple-system, sans-serif" font-size="28" font-weight="600" letter-spacing="9" fill="#FAF5F4" text-anchor="middle">
+      NAJA ROSE
+    </text>
+
+    <!-- Subtitle Pill -->
+    <rect x="136" y="375" width="240" height="34" rx="17" fill="#FAF5F4" fill-opacity="0.15"/>
+    <text x="256" y="398" font-family="'Inter', -apple-system, sans-serif" font-size="12" font-weight="700" letter-spacing="3" fill="#FAF5F4" text-anchor="middle">
+      DAKAR • SÉNÉGAL
+    </text>
+  </g>
 </svg>

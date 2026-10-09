@@ -91,8 +91,9 @@ export function ProductCard({ product }: { product: Product }) {
           <img
             src={primaryImage}
             alt={product.name}
-            className="w-full h-full object-contain sm:object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+            className="w-full h-full object-contain sm:object-cover group-hover:scale-105 transition-transform duration-300 ease-out transform-gpu"
             loading="lazy"
+            decoding="async"
           />
         </Link>
 

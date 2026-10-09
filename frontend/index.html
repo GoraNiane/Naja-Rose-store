@@ -11,7 +11,13 @@
     <meta name="keywords" content="Naja Rose Store, mode dakar, robes sénégal, tops, ensembles, livraison rapide sénégal, paiement wave, orange money" />
     <meta name="author" content="Naja Rose Store" />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#FBF5F4" />
+    <meta name="theme-color" content="#8B3A4A" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Naja Rose" />
+    <meta name="application-name" content="Naja Rose Store" />
+    <meta name="format-detection" content="telephone=no" />
 
     <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website" />
@@ -29,14 +35,24 @@
     <meta property="twitter:description" content="Des vêtements qui révèlent la meilleure version de vous. Paiement Wave & Orange Money." />
     <meta property="twitter:image" content="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1200&auto=format&fit=crop&q=80" />
 
-    <!-- Favicon & Icons -->
+    <!-- Favicon, PWA Web Manifest & App Icons -->
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="canonical" href="https://najarosestore.sn" />
 
-    <!-- Google Fonts: Inter + Outfit + Playfair Display + Cormorant Garamond + Alex Brush + Caveat -->
+    <!-- DNS Prefetch & Preconnect for Fast Asset Loading -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://images.unsplash.com">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600;1,700&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
+    
+    <!-- Hero Image Preload for Instant First Paint -->
+    <link rel="preload" as="image" href="/images/hero-boutique.jpg" fetchpriority="high" />
+
+    <!-- Google Fonts: Lightweight curated set (Inter + Playfair Display + Caveat) -->
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
   </head>
   <body class="bg-[#FAF7F6] text-[#2C1E21] font-sans antialiased selection:bg-[#F2D5D2] selection:text-[#5B242D] min-h-screen">
     <div id="root"></div>
