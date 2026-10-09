@@ -5,6 +5,8 @@ import { productService } from '../services/product.service';
 import { useCartStore } from '../stores/cartStore';
 import { formatCFA } from '../lib/utils';
 import { Spinner } from '../components/ui/Spinner';
+import { ScrollReveal } from '../components/common/ScrollReveal';
+import { motion } from 'framer-motion';
 import {
   ShoppingBag,
   Truck,
@@ -144,7 +146,7 @@ export function ProductDetailPage() {
     'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=1000&q=80';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8 overflow-hidden">
       {/* Breadcrumb back */}
       <Link
         to="/shop"
@@ -156,9 +158,13 @@ export function ProductDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
         {/* Photo Gallery (Max 7 photos) */}
-        <div className="lg:col-span-6 space-y-3 sm:space-y-4">
+        <ScrollReveal direction="left" distance={30} className="lg:col-span-6 space-y-3 sm:space-y-4">
           <div className="aspect-[4/5] sm:aspect-[3/4] w-full rounded-3xl overflow-hidden bg-[#FAF0EE] border border-[#F2E5E2] shadow-sm relative group flex items-center justify-center p-2 sm:p-4">
-            <img
+            <motion.img
+              key={primaryImage}
+              initial={{ opacity: 0.6, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
               src={primaryImage}
               alt={product.name}
               className="w-full h-full object-contain sm:object-cover object-center transition-all duration-300 group-hover:scale-105"
@@ -188,10 +194,10 @@ export function ProductDetailPage() {
               ))}
             </div>
           )}
-        </div>
+        </ScrollReveal>
 
         {/* Product Details & Purchase Form */}
-        <div className="lg:col-span-6 space-y-6 sm:space-y-8">
+        <ScrollReveal direction="right" distance={30} className="lg:col-span-6 space-y-6 sm:space-y-8">
           <div>
             {product.category && (
               <span className="text-[11px] sm:text-xs font-bold text-[#8B3A4A] uppercase tracking-widest block mb-1.5">
@@ -423,7 +429,7 @@ export function ProductDetailPage() {
               </p>
             </div>
           )}
-        </div>
+        </ScrollReveal>
       </div>
 
       {/* Sticky Mobile Bottom Purchase Bar (Pins above bottom nav on mobile) */}

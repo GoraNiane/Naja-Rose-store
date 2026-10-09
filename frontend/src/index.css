@@ -38,7 +38,7 @@ html {
   background: #b89895;
 }
 
-/* GPU Accelerated Marquee Ticker */
+/* GPU Accelerated Marquee Ticker - Slowed down for relaxed luxury reading */
 @keyframes marquee {
   0% {
     transform: translate3d(0, 0, 0);
@@ -53,11 +53,22 @@ html {
   width: max-content;
   will-change: transform;
   transform: translate3d(0, 0, 0);
-  animation: marquee 30s linear infinite;
+  animation: marquee 75s linear infinite;
 }
 
-.animate-marquee:hover {
+.animate-marquee:hover,
+.animate-marquee:active {
   animation-play-state: paused;
+}
+
+/* Dynamic Scroll & Landing micro-animations */
+@keyframes softFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.animate-soft-float {
+  animation: softFloat 4s ease-in-out infinite;
 }
 
 

@@ -2,49 +2,53 @@ import { APP_CONFIG } from '../../lib/constants';
 import { Phone, Mail, MapPin, Heart, ShieldCheck, Truck, Sparkles, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BrandLogo } from './BrandLogo';
+import { ScrollReveal, StaggerContainer, StaggerItem } from './ScrollReveal';
 
 export function Footer() {
   return (
-    <footer className="bg-[#2C1E21] text-[#E8D5D8] border-t border-[#3F2B30]">
+    <footer className="bg-[#2C1E21] text-[#E8D5D8] border-t border-[#3F2B30] overflow-hidden">
       {/* Reassurance Banner */}
       <div className="border-b border-[#3F2B30] bg-[#24171A]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center sm:text-left">
-            <div className="flex items-center gap-4 justify-center sm:justify-start">
-              <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0">
+          <StaggerContainer 
+            staggerDelay={0.1}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center sm:text-left"
+          >
+            <StaggerItem direction="up" className="flex items-center gap-4 justify-center sm:justify-start">
+              <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0 shadow-2xs">
                 <Truck className="w-6 h-6" />
               </div>
               <div>
                 <h4 className="font-semibold text-white text-sm">Livraison Rapide au Sénégal</h4>
                 <p className="text-xs text-[#A0888E]">Partout à Dakar sous 24h & dans les régions</p>
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="flex items-center gap-4 justify-center sm:justify-start">
-              <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0">
+            <StaggerItem direction="up" className="flex items-center gap-4 justify-center sm:justify-start">
+              <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0 shadow-2xs">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
                 <h4 className="font-semibold text-white text-sm">Paiement 100% Sécurisé</h4>
                 <p className="text-xs text-[#A0888E]">Wave, Orange Money ou Paiement à la livraison</p>
               </div>
-            </div>
+            </StaggerItem>
 
-            <div className="flex items-center gap-4 justify-center sm:justify-start">
-              <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0">
+            <StaggerItem direction="up" className="flex items-center gap-4 justify-center sm:justify-start">
+              <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0 shadow-2xs">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
                 <h4 className="font-semibold text-white text-sm">Elegance Style Garanties</h4>
                 <p className="text-xs text-[#A0888E]">Des vêtements qui révèlent votre beauté</p>
               </div>
-            </div>
-          </div>
+            </StaggerItem>
+          </StaggerContainer>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+        <ScrollReveal direction="up" distance={20} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand Col */}
           <div className="space-y-4">
             <BrandLogo size="md" isLight={true} />
@@ -154,7 +158,7 @@ export function Footer() {
               </li>
             </ul>
           </div>
-        </div>
+        </ScrollReveal>
 
         <div className="mt-12 pt-8 border-t border-[#3F2B30] flex flex-col sm:flex-row items-center justify-between text-xs text-[#A0888E] gap-4">
           <p>© {new Date().getFullYear()} Naja Rose Store Sénégal. Elegance Style Garanties.</p>

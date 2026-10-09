@@ -5,6 +5,7 @@ import { productService } from '../services/product.service';
 import { ProductCard } from '../components/common/ProductCard';
 import { Spinner } from '../components/ui/Spinner';
 import { Button } from '../components/ui/Button';
+import { ScrollReveal, StaggerContainer, StaggerItem } from '../components/common/ScrollReveal';
 import {
   Search,
   SlidersHorizontal,
@@ -334,9 +335,9 @@ export function ShopPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 overflow-hidden">
       {/* Header & Title */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/80 pb-6">
+      <ScrollReveal direction="up" distance={20} className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200/80 pb-6">
         <div>
           <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-700 uppercase tracking-widest">
             <Sparkles className="w-3 h-3" /> Boutique Naja Dakar
@@ -380,7 +381,7 @@ export function ShopPage() {
             </select>
           </div>
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* Main Content Layout: Sidebar Filters + Products Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -654,11 +655,16 @@ export function ShopPage() {
             </div>
           ) : activeProducts.length > 0 ? (
             <div className="space-y-10">
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3.5 sm:gap-6">
+              <StaggerContainer
+                staggerDelay={0.05}
+                className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3.5 sm:gap-6"
+              >
                 {activeProducts.map((product) => (
-                  <ProductCard key={product.id} product={product as any} />
+                  <StaggerItem key={product.id} direction="scale">
+                    <ProductCard product={product as any} />
+                  </StaggerItem>
                 ))}
-              </div>
+              </StaggerContainer>
 
               {/* Pagination Controls */}
               {productsData?.meta && productsData.meta.totalPages > 1 && (
