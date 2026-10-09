@@ -353,13 +353,34 @@ export function OrderDetailPage() {
 
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
               <span className="text-slate-500">Moyen de règlement :</span>
-              <span className="font-bold text-slate-900">
-                {order.paymentMethod === 'WAVE'
-                  ? 'Wave Sénégal'
-                  : order.paymentMethod === 'ORANGE_MONEY'
-                  ? 'Orange Money'
-                  : 'Paiement à la livraison'}
-              </span>
+              <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                {order.paymentMethod === 'WAVE' ? (
+                  <>
+                    <img
+                      src="/images/payments/wave-logo.jpg"
+                      alt="Wave"
+                      className="w-4 h-4 rounded-full object-cover shadow-2xs"
+                    />
+                    <span>Wave Sénégal</span>
+                  </>
+                ) : order.paymentMethod === 'ORANGE_MONEY' ? (
+                  <>
+                    <img
+                      src="/images/payments/orange-money-logo.jpg"
+                      alt="Orange Money"
+                      className="w-4 h-4 rounded object-contain shadow-2xs"
+                    />
+                    <span>Orange Money</span>
+                  </>
+                ) : order.paymentMethod === 'PAYTECH' ? (
+                  <>
+                    <span className="text-xs">💳</span>
+                    <span>PayTech Sénégal</span>
+                  </>
+                ) : (
+                  <span>💵 Paiement à la livraison</span>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-xs">

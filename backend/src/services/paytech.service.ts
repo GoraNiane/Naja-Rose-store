@@ -125,10 +125,17 @@ export class PayTechService {
       cancelUrl ||
       env.PAYTECH_CANCEL_URL ||
       `${env.APP_URL}/commande/${order.orderNumber}/facture?payment=cancelled`;
-    const finalIpnUrl =
+
+    let configuredIpn =
       ipnUrl ||
       env.PAYTECH_IPN_URL ||
       `${env.API_URL}/payments/paytech/ipn`;
+
+    // PayTech API strictly requires an HTTPS IPN URL. If in local development with http://localhost, use production webhook
+    if (configuredIpn.startsWith('http://localhost') || configuredIpn.startsWith('http://127.0.0.1')) {
+      configuredIpn = 'https://naja-rose-store.vercel.app/api/v1/payments/paytech/ipn';
+    }
+    const finalIpnUrl = configuredIpn;
 
     const customFieldData = JSON.stringify({
       orderId: order.id,

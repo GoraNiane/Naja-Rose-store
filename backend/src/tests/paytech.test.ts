@@ -60,17 +60,27 @@ async function runPayTechTests() {
   }
 
   const testSku = `PAYTECH-TEST-${Date.now()}`;
-  const testVariant = await prisma.productVariant.create({
-    data: {
+  let testVariant = await prisma.productVariant.findFirst({
+    where: {
       productId: testProduct.id,
       colorId: testColor.id,
       sizeId: testSize.id,
-      sku: testSku,
-      stock: 50,
-      price: 35000,
-      isActive: true,
     },
   });
+
+  if (!testVariant) {
+    testVariant = await prisma.productVariant.create({
+      data: {
+        productId: testProduct.id,
+        colorId: testColor.id,
+        sizeId: testSize.id,
+        sku: testSku,
+        stock: 50,
+        price: 35000,
+        isActive: true,
+      },
+    });
+  }
 
   let testZone = await prisma.deliveryZone.findFirst({ where: { name: 'Dakar Test Zone' } });
   if (!testZone) {

@@ -408,9 +408,33 @@ export function CheckoutPage() {
               )}
             </Button>
 
-            <div className="flex items-center justify-center gap-2 text-[11px] text-[#7A6469] text-center pt-1">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Génération automatique de facture sans prélèvement immédiat</span>
+            <div className="flex flex-col items-center gap-2 pt-1">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-[#7A6469] text-center">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Génération automatique de facture sans prélèvement immédiat</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
+                  <img
+                    src="/images/payments/wave-logo.jpg"
+                    alt="Wave"
+                    className="w-4 h-4 rounded-full object-cover shadow-2xs"
+                  />
+                  <span className="text-[10px] font-bold text-[#2C1E21]">Wave</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
+                  <img
+                    src="/images/payments/orange-money-logo.jpg"
+                    alt="Orange Money"
+                    className="w-4 h-4 rounded object-contain shadow-2xs"
+                  />
+                  <span className="text-[10px] font-bold text-[#2C1E21]">Orange Money</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
+                  <span className="text-xs">💳</span>
+                  <span className="text-[10px] font-bold text-[#8B3A4A]">PayTech SN</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
