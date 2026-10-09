@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { formatCFA, formatDate } from '../../lib/utils';
 import { orderService } from '../../services/order.service';
+import { Spinner } from '../ui/Spinner';
 import { Download, Printer, FileText, ShieldCheck, MapPin, Phone, User, Calendar, CreditCard, Sparkles } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 
@@ -58,10 +60,19 @@ export function InvoicePreview({
     window.print();
   };
 
-  const handleDownloadPdf = () => {
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
     if (invoice.orderNumber && invoice.orderNumber !== 'PROFORMA') {
-      const url = orderService.getInvoiceUrl(invoice.orderNumber);
-      window.open(url, '_blank');
+      try {
+        setIsDownloadingPdf(true);
+        await orderService.downloadInvoicePdf(invoice.orderNumber, invoice.invoiceNumber);
+      } catch (err) {
+        console.error('Download error:', err);
+        window.print();
+      } finally {
+        setIsDownloadingPdf(false);
+      }
     } else {
       window.print();
     }
@@ -133,11 +144,12 @@ export function InvoicePreview({
           </button>
           <button
             type="button"
+            disabled={isDownloadingPdf}
             onClick={handleDownloadPdf}
-            className="px-3.5 py-2 rounded-xl bg-[#8B3A4A] hover:bg-[#722E3C] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+            className="px-3.5 py-2 rounded-xl bg-[#8B3A4A] hover:bg-[#722E3C] disabled:opacity-75 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Télécharger PDF</span>
+            {isDownloadingPdf ? <Spinner size="sm" /> : <Download className="w-3.5 h-3.5" />}
+            <span>{isDownloadingPdf ? 'Téléchargement...' : 'Télécharger PDF'}</span>
           </button>
         </div>
       </div>

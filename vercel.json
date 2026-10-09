@@ -5,7 +5,7 @@
   "framework": "vite",
   "functions": {
     "api/index.js": {
-      "includeFiles": "backend/dist/**,node_modules/.prisma/client/**,backend/prisma/**"
+      "includeFiles": "backend/dist/**,node_modules/.prisma/client/**,backend/prisma/**,node_modules/pdfkit/**"
     }
   },
   "headers": [

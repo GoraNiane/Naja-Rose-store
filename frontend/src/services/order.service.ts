@@ -78,4 +78,50 @@ export const orderService = {
   getInvoiceUrl(idOrNumber: string) {
     return `/api/orders/${idOrNumber}/invoice/pdf`;
   },
+
+  async downloadInvoicePdf(idOrNumber: string, invoiceNumber?: string): Promise<void> {
+    const filename = `facture-${invoiceNumber || idOrNumber}.pdf`;
+
+    try {
+      // 1. Fetch PDF binary stream via Fetch API
+      const response = await fetch(`/api/orders/${encodeURIComponent(idOrNumber)}/invoice/pdf`, {
+        headers: {
+          Accept: 'application/pdf',
+        },
+      });
+
+      if (!response.ok) {
+        // Fallback to /api/v1/ prefix
+        const fallbackRes = await fetch(`/api/v1/orders/${encodeURIComponent(idOrNumber)}/invoice/pdf`);
+        if (!fallbackRes.ok) {
+          throw new Error(`Erreur serveur (${fallbackRes.status})`);
+        }
+        const blob = await fallbackRes.blob();
+        this.triggerBlobDownload(blob, filename);
+        return;
+      }
+
+      const blob = await response.blob();
+      this.triggerBlobDownload(blob, filename);
+    } catch (err) {
+      console.warn('[PDF Download] Blob fetch failed, attempting direct window open fallback:', err);
+      // Fallback: direct window open or print
+      const directUrl = `/api/orders/${encodeURIComponent(idOrNumber)}/invoice/pdf`;
+      const win = window.open(directUrl, '_blank');
+      if (!win) {
+        window.location.href = directUrl;
+      }
+    }
+  },
+
+  triggerBlobDownload(blob: Blob, filename: string) {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+  },
 };

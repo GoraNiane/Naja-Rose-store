@@ -75,10 +75,21 @@ export function OrderDetailPage() {
     }
   };
 
-  const handleDownloadInvoice = () => {
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadInvoice = async () => {
     if (!order) return;
-    const invoiceUrl = orderService.getInvoiceUrl(order.orderNumber || order.id);
-    window.open(invoiceUrl, '_blank');
+    try {
+      setIsDownloadingPdf(true);
+      await orderService.downloadInvoicePdf(
+        order.orderNumber || order.id,
+        order.invoice?.invoiceNumber || order.orderNumber
+      );
+    } catch (err) {
+      console.error('Download error:', err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   if (isLoading) {
@@ -160,10 +171,13 @@ export function OrderDetailPage() {
           <Button
             variant="outline"
             size="sm"
+            disabled={isDownloadingPdf}
             onClick={handleDownloadInvoice}
-            leftIcon={<FileText className="w-4 h-4 text-amber-700" />}
+            leftIcon={
+              isDownloadingPdf ? <Spinner size="sm" /> : <FileText className="w-4 h-4 text-amber-700" />
+            }
           >
-            Télécharger Facture PDF
+            {isDownloadingPdf ? 'Téléchargement...' : 'Télécharger Facture PDF'}
           </Button>
           <a
             href={`https://wa.me/${APP_CONFIG.whatsapp.replace(/\+/g, '')}?text=Bonjour%20Naja%20Store,%20je%20souhaite%20des%20informations%20sur%20ma%20commande%20${order.orderNumber}`}

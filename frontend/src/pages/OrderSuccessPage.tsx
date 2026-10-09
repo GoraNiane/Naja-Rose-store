@@ -13,12 +13,28 @@ export function OrderSuccessPage() {
   const [searchParams] = useSearchParams();
   const orderNumber = searchParams.get('orderNumber') || '';
   const [showFullInvoice, setShowFullInvoice] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const { data: order, isLoading } = useQuery({
     queryKey: ['order-success', orderNumber],
     queryFn: () => orderService.getOrderByNumber(orderNumber),
     enabled: !!orderNumber,
   });
+
+  const handleDownloadInvoice = async () => {
+    if (!order) return;
+    try {
+      setIsDownloadingPdf(true);
+      await orderService.downloadInvoicePdf(
+        order.orderNumber || order.id,
+        order.invoice?.invoiceNumber || order.orderNumber
+      );
+    } catch (err) {
+      console.error('Download error:', err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   const invoiceData: InvoiceData | null = order
     ? {
@@ -83,15 +99,15 @@ export function OrderSuccessPage() {
               <p className="font-mono font-bold text-sm text-[#2C1E21]">{order.orderNumber}</p>
             </div>
             <div className="flex items-center gap-2">
-              <a
-                href={orderService.getInvoiceUrl(order.orderNumber)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-2 rounded-xl bg-[#8B3A4A] hover:bg-[#722E3C] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+              <button
+                type="button"
+                disabled={isDownloadingPdf}
+                onClick={handleDownloadInvoice}
+                className="px-3.5 py-2 rounded-xl bg-[#8B3A4A] hover:bg-[#722E3C] disabled:opacity-75 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Télécharger Facture (PDF)</span>
-              </a>
+                {isDownloadingPdf ? <Spinner size="sm" /> : <Download className="w-3.5 h-3.5" />}
+                <span>{isDownloadingPdf ? 'Téléchargement...' : 'Télécharger Facture (PDF)'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowFullInvoice(!showFullInvoice)}

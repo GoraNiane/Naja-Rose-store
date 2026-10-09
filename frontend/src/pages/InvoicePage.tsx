@@ -133,10 +133,21 @@ export function InvoicePage() {
     },
   });
 
-  const handleDownloadPdf = () => {
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
     if (!order) return;
-    const pdfUrl = orderService.getInvoicePdfUrl(order.orderNumber || order.id);
-    window.open(pdfUrl, '_blank');
+    try {
+      setIsDownloadingPdf(true);
+      await orderService.downloadInvoicePdf(
+        order.orderNumber || order.id,
+        order.invoice?.invoiceNumber || order.orderNumber
+      );
+    } catch (err: any) {
+      console.error('Invoice PDF Download failed:', err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const handlePrint = () => {
@@ -241,11 +252,21 @@ export function InvoicePage() {
           </button>
           <button
             type="button"
+            disabled={isDownloadingPdf}
             onClick={handleDownloadPdf}
-            className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-[#8B3A4A] hover:bg-[#722E3C] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+            className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-[#8B3A4A] hover:bg-[#722E3C] disabled:opacity-75 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors cursor-pointer"
           >
-            <Download className="w-4 h-4" />
-            <span>Télécharger PDF</span>
+            {isDownloadingPdf ? (
+              <>
+                <Spinner size="sm" />
+                <span>Téléchargement...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Télécharger PDF</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -738,8 +759,14 @@ export function InvoicePage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Button variant="gold" size="sm" onClick={handleDownloadPdf} leftIcon={<Download className="w-3.5 h-3.5" />}>
-              Télécharger ma Facture PDF
+            <Button
+              variant="gold"
+              size="sm"
+              disabled={isDownloadingPdf}
+              onClick={handleDownloadPdf}
+              leftIcon={isDownloadingPdf ? <Spinner size="sm" /> : <Download className="w-3.5 h-3.5" />}
+            >
+              {isDownloadingPdf ? 'Téléchargement...' : 'Télécharger ma Facture PDF'}
             </Button>
             <Link to={`/orders/${order.orderNumber}`}>
               <Button variant="outline" size="sm" leftIcon={<Clock className="w-3.5 h-3.5" />}>
