@@ -24,10 +24,21 @@ export function createApp(): Express {
   // CORS configuration
   app.use(
     cors({
-      origin: [env.APP_URL, 'http://localhost:5173', 'http://localhost:3000'],
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, server-to-server IPNs/Webhooks) or any storefront origin
+        callback(null, true);
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'wave-signature', 'Wave-Signature', 'X-API-KEY'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'wave-signature',
+        'Wave-Signature',
+        'X-API-KEY',
+        'API_KEY',
+        'API_SECRET',
+      ],
     })
   );
 

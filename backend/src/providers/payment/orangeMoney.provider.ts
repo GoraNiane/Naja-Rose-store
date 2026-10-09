@@ -53,7 +53,7 @@ export class OrangeMoneyProvider implements PaymentProvider {
     // 1. Sandbox / Mock mode fallback
     if (this.isSandbox) {
       const mockToken = `om_tok_sbx_${params.orderNumber}_${Date.now()}`;
-      const sandboxRedirectUrl = `${env.APP_URL}/checkout/payment-redirect?method=ORANGE_MONEY&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&txId=${mockToken}&sandbox=true`;
+      const sandboxRedirectUrl = `/checkout/payment-redirect?method=ORANGE_MONEY&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&txId=${mockToken}&sandbox=true`;
 
       return {
         transactionId: mockToken,

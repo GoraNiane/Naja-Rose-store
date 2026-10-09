@@ -95,11 +95,31 @@ export function InvoicePage() {
         paymentData?.payment_url;
 
       if (redirectUrl) {
-        if (redirectUrl.includes(window.location.host) || redirectUrl.startsWith('/')) {
-          const path = redirectUrl.replace(window.location.origin, '');
-          navigate(path);
-        } else {
-          // Redirect to the official PayTech hosted secure payment checkout page
+        // 1. If it's a relative URL, navigate internally with React Router
+        if (redirectUrl.startsWith('/')) {
+          navigate(redirectUrl);
+          return;
+        }
+
+        // 2. Parse absolute URLs
+        try {
+          const parsed = new URL(redirectUrl, window.location.origin);
+
+          // If it targets an internal application route or localhost dev URL, navigate internally
+          if (
+            parsed.origin === window.location.origin ||
+            parsed.pathname.startsWith('/checkout') ||
+            parsed.pathname.startsWith('/commande') ||
+            parsed.hostname === 'localhost' ||
+            parsed.hostname === '127.0.0.1'
+          ) {
+            navigate(`${parsed.pathname}${parsed.search}${parsed.hash}`);
+            return;
+          }
+
+          // 3. Official External Gateway (PayTech, Wave mobile, etc.)
+          window.location.href = redirectUrl;
+        } catch {
           window.location.href = redirectUrl;
         }
       } else {

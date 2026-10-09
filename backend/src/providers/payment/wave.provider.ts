@@ -48,7 +48,7 @@ export class WaveProvider implements PaymentProvider {
     // 1. Sandbox / Mock mode fallback
     if (this.isSandbox) {
       const mockSessionId = `wave_sess_sbx_${params.orderNumber}_${Date.now()}`;
-      const sandboxRedirectUrl = `${env.APP_URL}/checkout/payment-redirect?method=WAVE&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&txId=${mockSessionId}&sandbox=true`;
+      const sandboxRedirectUrl = `/checkout/payment-redirect?method=WAVE&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&txId=${mockSessionId}&sandbox=true`;
 
       return {
         transactionId: mockSessionId,

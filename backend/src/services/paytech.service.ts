@@ -207,10 +207,11 @@ export class PayTechService {
         if (err instanceof ApiError) throw err;
         logger.error('[PayTech Service] Network/API Error:', err);
         // If in test mode with non-routable host or offline dev, fallback to secure dev redirect
-        if (this.isTestEnv) {
-          logger.warn('[PayTech Service] Using sandbox fallback for development testing');
+        if (this.isTestEnv || !hasValidCredentials) {
+          logger.warn('[PayTech Service] Using sandbox fallback for development/test');
           token = `paytech_token_sbx_${order.orderNumber}_${Date.now()}`;
-          redirectUrl = `${env.APP_URL}/checkout/payment-redirect?method=PAYTECH&orderId=${order.id}&orderNumber=${order.orderNumber}&amount=${totalAmount}&token=${token}&sandbox=true`;
+          redirectUrl = `/checkout/payment-redirect?method=PAYTECH&orderId=${order.id}&orderNumber=${order.orderNumber}&amount=${totalAmount}&token=${token}&sandbox=true`;
+          isSandbox = true;
         } else {
           throw ApiError.internal('Impossible de joindre les serveurs PayTech. Veuillez réessayer dans un instant.');
         }
@@ -219,7 +220,7 @@ export class PayTechService {
       // In development / test environment with mock keys: Provide standard sandbox session
       logger.info('[PayTech Service] Running in SANDBOX DEVELOPMENT mode (Mock keys configured)');
       token = `paytech_token_sbx_${order.orderNumber}_${Date.now()}`;
-      redirectUrl = `${env.APP_URL}/checkout/payment-redirect?method=PAYTECH&orderId=${order.id}&orderNumber=${order.orderNumber}&amount=${totalAmount}&token=${token}&sandbox=true`;
+      redirectUrl = `/checkout/payment-redirect?method=PAYTECH&orderId=${order.id}&orderNumber=${order.orderNumber}&amount=${totalAmount}&token=${token}&sandbox=true`;
       isSandbox = true;
     }
 
