@@ -65,7 +65,7 @@ export class OrangeMoneyProvider implements PaymentProvider {
         status: PaymentStatus.PENDING,
         isSandbox: true,
         instructions:
-          `Composez le #144#391# avec votre numéro ${customerPhone || 'Orange'} ou validez via l’application Max it`,
+          `Ouvrez directement votre application Orange Max it pour approuver le règlement de ${params.amount} FCFA`,
         metadata: {
           provider: 'ORANGE_MONEY',
           mode: 'SANDBOX',

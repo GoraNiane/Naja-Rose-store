@@ -609,7 +609,7 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Paiement sécurisé via votre compte Orange Money Sénégal avec code de validation OTP (#144#391#).
+                Validation directe et 100% sécurisée via l'application officielle <strong>Orange Max it</strong>.
               </p>
             </label>
 

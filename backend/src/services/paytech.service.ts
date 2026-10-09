@@ -146,11 +146,13 @@ export class PayTechService {
     });
 
     // 2. Prepare PayTech Official Payload
+    // Use unique timestamp suffix to prevent PayTech "ref_command existe deja" error on retry
+    const uniqueRefCommand = `${order.orderNumber}_${Date.now()}`;
     const paytechBody = {
       item_name: `Commande #${order.orderNumber} - NAJA ROSE STORE`,
       item_price: totalAmount,
       currency: 'XOF',
-      ref_command: order.orderNumber,
+      ref_command: uniqueRefCommand,
       command_name: `Vêtements NAJA ROSE (Facture ${order.invoice?.invoiceNumber || order.orderNumber})`,
       env: currentEnv,
       ipn_url: finalIpnUrl,
@@ -311,10 +313,17 @@ export class PayTechService {
       throw ApiError.badRequest('Paramètre ref_command manquant');
     }
 
+    const baseOrderNumber = refCommand.includes('_') ? refCommand.split('_')[0] : refCommand;
+
     // 2. Fetch the corresponding order
     let order = await prisma.order.findFirst({
       where: {
-        OR: [{ orderNumber: refCommand }, { id: refCommand }],
+        OR: [
+          { orderNumber: refCommand },
+          { id: refCommand },
+          { orderNumber: baseOrderNumber },
+          { id: baseOrderNumber },
+        ],
       },
       include: {
         payments: {

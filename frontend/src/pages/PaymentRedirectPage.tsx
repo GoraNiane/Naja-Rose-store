@@ -9,12 +9,10 @@ import {
   CheckCircle2,
   XCircle,
   ArrowLeft,
-  Lock,
   Smartphone,
-  QrCode,
   ExternalLink,
-  PhoneCall,
   Sparkles,
+  CreditCard,
 } from 'lucide-react';
 
 export function PaymentRedirectPage() {
@@ -42,10 +40,12 @@ export function PaymentRedirectPage() {
     typeof navigator !== 'undefined' &&
     /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 
-  // Construct Wave mobile deep-link with registered phone, amount and order reference
+  // Construct Wave & Orange Max it mobile links
   const cleanPhone = phone.replace(/\s+/g, '');
   const waveDeepLink = `wave://send?phone=${encodeURIComponent(cleanPhone)}&amount=${amount}&memo=${encodeURIComponent(orderNumber)}`;
   const waveWebCheckout = `https://pay.wave.com/`;
+  const orangeMaxItDeepLink = `maxit://`;
+  const orangeMaxItWeb = `https://maxit.orange.sn/`;
 
   // On Mobile: Attempt automatic redirection to the Wave app once upon entry
   useEffect(() => {
@@ -55,9 +55,9 @@ export function PaymentRedirectPage() {
         try {
           window.location.href = waveDeepLink;
         } catch {
-          // Fallback to web link if scheme handler isn't registered
+          // Fallback
         }
-      }, 600);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [isWave, isMobile, autoRedirected, waveDeepLink]);
@@ -65,7 +65,6 @@ export function PaymentRedirectPage() {
   const handleOpenWaveApp = () => {
     try {
       window.location.href = waveDeepLink;
-      // Also provide web fallback after brief delay if app doesn't take over
       setTimeout(() => {
         window.open(waveWebCheckout, '_blank');
       }, 1500);
@@ -74,8 +73,15 @@ export function PaymentRedirectPage() {
     }
   };
 
-  const handleOpenOrangeMoney = () => {
-    window.location.href = 'tel:*144*391%23';
+  const handleOpenOrangeMaxIt = () => {
+    try {
+      window.location.href = orangeMaxItDeepLink;
+      setTimeout(() => {
+        window.open(orangeMaxItWeb, '_blank');
+      }, 1500);
+    } catch {
+      window.open(orangeMaxItWeb, '_blank');
+    }
   };
 
   const handleConfirmPayment = async (status: 'PAID' | 'FAILED' = 'PAID') => {
@@ -121,10 +127,10 @@ export function PaymentRedirectPage() {
           <div className="flex items-center justify-between gap-4 relative z-10">
             <div className="space-y-1">
               <span className="text-[10px] uppercase tracking-widest font-black opacity-90 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Passerelle Officielle Mobile
+                <Sparkles className="w-3 h-3" /> Application Officielle Mobile
               </span>
               <h1 className="text-2xl sm:text-3xl font-black font-serif tracking-tight">
-                {isWave ? 'Wave Sénégal' : isOM ? 'Orange Money' : 'PayTech Sénégal'}
+                {isWave ? 'Wave Sénégal' : isOM ? 'Orange Money (Max it)' : 'Carte Bancaire (Visa / Mastercard)'}
               </h1>
               {cleanPhone && (
                 <p className="text-xs opacity-95 flex items-center gap-1 pt-0.5">
@@ -147,8 +153,8 @@ export function PaymentRedirectPage() {
                   className="w-full h-full object-contain rounded-xl"
                 />
               ) : (
-                <div className="w-full h-full rounded-xl bg-[#8B3A4A] flex items-center justify-center text-2xl">
-                  💳
+                <div className="w-full h-full rounded-xl bg-[#8B3A4A] flex items-center justify-center text-white text-2xl">
+                  <CreditCard className="w-8 h-8" />
                 </div>
               )}
             </div>
@@ -172,79 +178,57 @@ export function PaymentRedirectPage() {
         <div className="p-6 sm:p-8 space-y-6">
           {/* WAVE SPECIFIC UI & ACTIONS */}
           {isWave && (
-            <div className="space-y-5">
-              {/* Primary Mobile App Opener Button */}
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={handleOpenWaveApp}
-                  className="w-full py-4 px-6 rounded-2xl bg-[#0099FF] hover:bg-[#0080FF] active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-lg shadow-sky-500/25 flex items-center justify-center gap-3 transition-all cursor-pointer"
-                >
-                  <img
-                    src="/images/payments/wave-logo.jpg"
-                    alt="Wave"
-                    className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-xs"
-                  />
-                  <span>Ouvrir l'application Wave</span>
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-                <p className="text-[11px] text-center text-slate-500">
-                  Validez la transaction de <strong>{formatCFA(amount)}</strong> directement avec votre code PIN Wave.
-                </p>
-              </div>
-
-              {/* QR Code / Desktop Helper */}
-              <div className="p-4 rounded-2xl bg-[#F0F9FF] border border-[#BAE6FD] flex items-center gap-4">
-                <div className="w-16 h-16 rounded-xl bg-white border border-[#7DD3FC] flex items-center justify-center shrink-0 p-1.5 shadow-2xs">
-                  <QrCode className="w-full h-full text-[#0284C7]" />
-                </div>
-                <div className="text-xs text-[#0369A1] space-y-1">
-                  <p className="font-bold">Vous êtes sur ordinateur ?</p>
-                  <p className="text-[11px] text-[#075985] leading-relaxed">
-                    Ouvrez l'application <strong>Wave</strong> sur votre téléphone ({cleanPhone || 'mobile'}) et scannez ce code ou saisissez le montant de <strong>{formatCFA(amount)}</strong>.
-                  </p>
-                </div>
-              </div>
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={handleOpenWaveApp}
+                className="w-full py-4 px-6 rounded-2xl bg-[#0099FF] hover:bg-[#0080FF] active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-lg shadow-sky-500/25 flex items-center justify-center gap-3 transition-all cursor-pointer"
+              >
+                <img
+                  src="/images/payments/wave-logo.jpg"
+                  alt="Wave"
+                  className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-xs"
+                />
+                <span>Ouvrir l'application Wave</span>
+                <ExternalLink className="w-4 h-4" />
+              </button>
+              <p className="text-xs text-center text-[#7A6469] leading-relaxed">
+                Appuyez sur le bouton ci-dessus pour ouvrir directement votre compte <strong>Wave</strong> et valider le règlement de <strong>{formatCFA(amount)}</strong> avec votre code PIN.
+              </p>
             </div>
           )}
 
-          {/* ORANGE MONEY SPECIFIC UI */}
+          {/* ORANGE MONEY SPECIFIC UI (MAX IT DIRECT) */}
           {isOM && (
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-[#FFF7ED] border border-[#FED7AA] space-y-3">
-                <div className="flex items-center gap-2 font-bold text-orange-950 text-xs">
-                  <PhoneCall className="w-4 h-4 text-orange-600" />
-                  <span>Procédure de paiement Orange Money Sénégal</span>
-                </div>
-                <div className="text-xs text-orange-900 space-y-1.5">
-                  <p>
-                    1. Composez le <strong className="text-sm font-mono text-orange-600">#144#391#</strong> sur votre téléphone pour générer votre code d'autorisation OTP.
-                  </p>
-                  <p>
-                    2. Ou validez directement dans l'application <strong>Orange Max it</strong>.
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenOrangeMoney}
-                  className="w-full border-orange-300 text-orange-800 hover:bg-orange-100"
-                >
-                  <PhoneCall className="w-3.5 h-3.5 mr-1.5" /> Composer #144#391#
-                </Button>
-              </div>
+              <button
+                type="button"
+                onClick={handleOpenOrangeMaxIt}
+                className="w-full py-4 px-6 rounded-2xl bg-[#FF6600] hover:bg-[#E65C00] active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-lg shadow-orange-500/25 flex items-center justify-center gap-3 transition-all cursor-pointer"
+              >
+                <img
+                  src="/images/payments/orange-money-logo.jpg"
+                  alt="Orange Money"
+                  className="w-7 h-7 rounded-lg object-contain bg-white p-0.5 border border-white shadow-xs"
+                />
+                <span>Ouvrir Orange Max it</span>
+                <ExternalLink className="w-4 h-4" />
+              </button>
+              <p className="text-xs text-center text-[#7A6469] leading-relaxed">
+                Paiement 100% sécurisé via l'application <strong>Orange Max it</strong>. Ouvrez Max it pour approuver le paiement de <strong>{formatCFA(amount)}</strong>.
+              </p>
             </div>
           )}
 
-          {/* PAYTECH SPECIFIC UI */}
+          {/* CARTE BANCAIRE SPECIFIC UI */}
           {isPayTech && (
             <div className="p-4 rounded-2xl bg-[#FAF2F0] border border-[#F4E2E0] text-xs text-[#644D52] space-y-2">
               <div className="flex items-center gap-2 font-bold text-[#2C1E21]">
-                <Lock className="w-4 h-4 text-[#8B3A4A]" />
-                <span>Passerelle PayTech Multi-Opérateurs</span>
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Paiement Sécurisé 3D-Secure</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                Règlement certifié par PayTech Sénégal via Wave, Orange Money, Free Money ou Carte Bancaire.
+                Règlement certifié par carte bancaire Visa, Mastercard ou carte prépayée internationale avec confirmation instantanée.
               </p>
             </div>
           )}
