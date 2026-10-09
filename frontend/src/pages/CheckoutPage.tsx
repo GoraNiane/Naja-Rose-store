@@ -11,7 +11,8 @@ import { formatCFA } from '../lib/utils';
 import { PAYMENT_METHODS } from '../lib/constants';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { ShieldCheck, Truck, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Truck, ArrowRight, FileText, CheckCircle2 } from 'lucide-react';
+import { InvoicePreview, type InvoiceData } from '../components/common/InvoicePreview';
 
 const checkoutSchema = z.object({
   firstName: z.string().min(2, 'Le prénom est obligatoire'),
@@ -31,6 +32,8 @@ export function CheckoutPage() {
   const { items, subtotal, clearCart } = useCartStore();
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<'FORM' | 'INVOICE_PREVIEW'>('FORM');
+  const [formData, setFormData] = useState<CheckoutFormValues | null>(null);
 
   const { data: deliveryZones, isLoading: isZonesLoading } = useQuery({
     queryKey: ['delivery-zones'],
@@ -86,28 +89,37 @@ export function CheckoutPage() {
     },
   });
 
-  const onSubmit = (data: CheckoutFormValues) => {
+  // Step 1: Validates form and opens the Proforma Invoice Review step
+  const handleFormSubmit = (data: CheckoutFormValues) => {
     if (items.length === 0) {
       setSubmitError('Votre panier est vide');
       return;
     }
-
     setSubmitError(null);
+    setFormData(data);
+    setCurrentStep('INVOICE_PREVIEW');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Step 2: Confirms Proforma Invoice and proceeds to Payment
+  const handleConfirmAndPay = () => {
+    if (!formData || items.length === 0) return;
+
     createOrderMutation.mutate({
       customer: {
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        email: data.email?.trim() || undefined,
-        phone: data.phone.trim(),
-        address: data.address.trim(),
-        city: data.city || 'Dakar',
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email?.trim() || undefined,
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+        city: formData.city || 'Dakar',
       },
-      deliveryZoneId: data.deliveryZoneId,
-      deliveryAddress: data.address.trim(),
-      phone: data.phone.trim(),
-      email: data.email?.trim() || undefined,
-      notes: data.notes?.trim() || undefined,
-      paymentMethod: data.paymentMethod,
+      deliveryZoneId: formData.deliveryZoneId,
+      deliveryAddress: formData.address.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email?.trim() || undefined,
+      notes: formData.notes?.trim() || undefined,
+      paymentMethod: formData.paymentMethod,
       items: items.map((i) => ({
         variantId: i.variantId,
         quantity: i.quantity,
@@ -115,7 +127,7 @@ export function CheckoutPage() {
     });
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && currentStep === 'FORM') {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
         <h2 className="text-xl font-bold text-slate-900">Votre panier est vide</h2>
@@ -127,18 +139,98 @@ export function CheckoutPage() {
     );
   }
 
+  // Generate Proforma Invoice Preview Object
+  const proformaInvoiceData: InvoiceData = {
+    invoiceNumber: `FAC-PROFORMA-${Date.now().toString().slice(-6)}`,
+    orderNumber: `CMD-PROFORMA`,
+    createdAt: new Date().toISOString(),
+    customer: {
+      firstName: formData?.firstName || '',
+      lastName: formData?.lastName || '',
+      phone: formData?.phone || '',
+      email: formData?.email || null,
+      address: formData?.address || '',
+      city: formData?.city || 'Dakar',
+    },
+    deliveryZoneName: selectedZone?.name || 'Dakar & Régions',
+    deliveryAddress: formData?.address || '',
+    notes: formData?.notes || null,
+    paymentMethod: formData?.paymentMethod || 'WAVE',
+    subtotal,
+    deliveryFee,
+    total,
+    items: items.map((i) => ({
+      productName: i.productName,
+      imageUrl: i.imageUrl,
+      colorName: i.colorName,
+      sizeName: i.sizeName,
+      quantity: i.quantity,
+      unitPrice: i.price,
+      total: i.price * i.quantity,
+    })),
+  };
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="mb-8 space-y-1">
-        <h1 className="text-2xl sm:text-3xl font-black font-display text-slate-900">
-          Finalisation de votre Commande
-        </h1>
-        <p className="text-xs text-slate-500">
-          Renseignez vos coordonnées de livraison et choisissez votre mode de règlement sécurisé.
-        </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+      {/* Checkout Breadcrumb Steps */}
+      <div className="flex items-center justify-between border-b border-[#F4E2E0] pb-5">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-serif italic font-bold text-[#2C1E21]">
+            {currentStep === 'FORM' ? 'Finalisation de votre Commande' : 'Visualisation & Validation de la Facture'}
+          </h1>
+          <p className="text-xs text-[#7A6469] mt-1">
+            {currentStep === 'FORM'
+              ? 'Renseignez vos coordonnées de livraison au Sénégal'
+              : 'Vérifiez les détails de votre facture avant de procéder au paiement'}
+          </p>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="hidden sm:flex items-center gap-2 text-xs font-bold">
+          <span
+            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
+              currentStep === 'FORM'
+                ? 'bg-[#8B3A4A] text-white shadow-xs'
+                : 'bg-emerald-100 text-emerald-800'
+            }`}
+          >
+            {currentStep === 'INVOICE_PREVIEW' ? <CheckCircle2 className="w-3.5 h-3.5" /> : '1.'}
+            <span>1. Livraison & Coordonnées</span>
+          </span>
+          <span className="text-[#A0888E]">→</span>
+          <span
+            className={`px-3 py-1.5 rounded-full flex items-center gap-1.5 ${
+              currentStep === 'INVOICE_PREVIEW'
+                ? 'bg-[#8B3A4A] text-white shadow-xs'
+                : 'bg-slate-100 text-slate-500'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>2. Facture & Règlement</span>
+          </span>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      {currentStep === 'INVOICE_PREVIEW' ? (
+        /* STEP 2: PROFORMA INVOICE PREVIEW BEFORE PAYMENT */
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {submitError && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-semibold">
+              {submitError}
+            </div>
+          )}
+
+          <InvoicePreview
+            invoice={proformaInvoiceData}
+            isProforma={true}
+            onProceedPayment={handleConfirmAndPay}
+            onBackToEdit={() => setCurrentStep('FORM')}
+            isSubmitting={createOrderMutation.isPending}
+          />
+        </div>
+      ) : (
+        /* STEP 1: DELIVERY FORM & CART SUMMARY */
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Column: Customer and Delivery form */}
         <div className="lg:col-span-7 space-y-8">
           {/* Contact and address */}
@@ -336,11 +428,10 @@ export function CheckoutPage() {
               type="submit"
               variant="gold"
               size="lg"
-              className="w-full"
-              isLoading={createOrderMutation.isPending}
+              className="w-full font-bold shadow-md hover:shadow-lg"
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Confirmer & Payer {formatCFA(total)}
+              Étape 2 : Voir & Valider ma Facture ({formatCFA(total)})
             </Button>
 
             <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 text-center">
@@ -350,6 +441,7 @@ export function CheckoutPage() {
           </div>
         </div>
       </form>
+      )}
     </div>
   );
 }
