@@ -1,10 +1,11 @@
 import api from './api';
+import { PaymentMethod, PaymentStatus } from '../types';
 
 export interface PaymentStatusResponse {
   orderId: string;
   orderNumber: string;
-  paymentMethod: 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
-  paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
   orderStatus: string;
   total: number;
   subtotal: number;
@@ -18,7 +19,7 @@ export const paymentService = {
   async initiatePayment(params: {
     orderId?: string;
     orderNumber?: string;
-    paymentMethod?: 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+    paymentMethod?: PaymentMethod;
     successUrl?: string;
     cancelUrl?: string;
   }) {

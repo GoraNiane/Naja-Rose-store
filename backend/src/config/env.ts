@@ -36,6 +36,15 @@ const envSchema = z.object({
   ORANGE_MONEY_MERCHANT_KEY: z.string().optional(),
   ORANGE_MONEY_API_KEY: z.string().optional(),
   ORANGE_MONEY_API_URL: z.string().default('https://api.orange.com/orange-money-webpay/dev/v1'),
+
+  // Official PayTech Senegal Gateway
+  PAYTECH_API_KEY: z.string().optional(),
+  PAYTECH_API_SECRET: z.string().optional(),
+  PAYTECH_ENV: z.enum(['test', 'prod']).default('test'),
+  PAYTECH_IPN_URL: z.string().optional(),
+  PAYTECH_SUCCESS_URL: z.string().optional(),
+  PAYTECH_CANCEL_URL: z.string().optional(),
+  FRONTEND_URL: z.string().default('http://localhost:5173'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -69,6 +69,12 @@ export function InvoicePreview({
 
   const getPaymentMethodDetails = (method: string) => {
     switch (method) {
+      case 'PAYTECH':
+        return {
+          name: 'Passerelle PayTech (Wave, Orange Money, Free Money, Carte)',
+          badge: 'PayTech 100% Sécurisé',
+          color: 'bg-[#FAF2F0] text-[#8B3A4A] border-[#F4E2E0]',
+        };
       case 'WAVE':
         return {
           name: 'Wave Sénégal (Paiement Mobile)',

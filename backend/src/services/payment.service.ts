@@ -64,7 +64,9 @@ export class PaymentService {
       `${env.APP_URL}/checkout/cancel?orderNumber=${order.orderNumber}`;
     const webhookUrl =
       options?.webhookUrl ||
-      `${env.API_URL}/payments/${order.paymentMethod.toLowerCase().replace('_', '-')}/webhook`;
+      (order.paymentMethod === PaymentMethod.PAYTECH
+        ? `${env.API_URL}/payments/paytech/ipn`
+        : `${env.API_URL}/payments/${order.paymentMethod.toLowerCase().replace('_', '-')}/webhook`);
 
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`;
 

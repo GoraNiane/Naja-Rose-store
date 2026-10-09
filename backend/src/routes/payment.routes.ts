@@ -8,7 +8,9 @@ router.post('/initiate', PaymentController.initiate);
 router.get('/:orderId/status', PaymentController.getStatus);
 router.get('/status/:orderId', PaymentController.getStatus);
 
-// Server-to-server Webhook callbacks (Public endpoints invoked by payment gateways)
+// Server-to-server Webhook & IPN callbacks (Public endpoints invoked by payment gateways)
+router.post('/paytech/ipn', PaymentController.handlePayTechIPN);
+router.post('/paytech/webhook', PaymentController.handlePayTechIPN);
 router.post('/wave/webhook', PaymentController.handleWaveWebhook);
 router.post('/orange-money/webhook', PaymentController.handleOrangeMoneyWebhook);
 

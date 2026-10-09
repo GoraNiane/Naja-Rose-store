@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import { paymentService } from '../services/payment.service.js';
+import { paytechService } from '../services/paytech.service.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { logger } from '../utils/logger.js';
@@ -103,6 +104,34 @@ export class PaymentController {
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
           success: false,
+          error: error.message,
+        });
+      }
+      return next(error);
+    }
+  }
+
+  /**
+   * POST /api/payments/paytech/ipn (and /webhook)
+   * Official PayTech Senegal IPN Callback endpoint
+   */
+  static async handlePayTechIPN(req: Request, res: Response, next: NextFunction) {
+    try {
+      logger.info('[PayTech IPN Endpoint] Received notification from PayTech gateway');
+      const payload = req.body;
+
+      const result = await paytechService.handleIpnNotification(payload);
+
+      return res.status(200).json({
+        success: 1,
+        message: 'PayTech IPN processed successfully',
+        data: result,
+      });
+    } catch (error) {
+      logger.error('[PayTech IPN Endpoint] Failed processing PayTech IPN:', error);
+      if (error instanceof ApiError) {
+        return res.status(error.statusCode).json({
+          success: 0,
           error: error.message,
         });
       }

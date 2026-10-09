@@ -34,10 +34,11 @@ export function InvoicePage() {
   const ref = orderNumber || id || searchParams.get('orderNumber') || '';
   const paymentParam = searchParams.get('payment'); // 'cancelled' | 'failed'
 
-  const [selectedMethod, setSelectedMethod] = useState<'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY'>('WAVE');
+  type SelectedPaymentMethod = 'PAYTECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+  const [selectedMethod, setSelectedMethod] = useState<SelectedPaymentMethod>('PAYTECH');
   const [paymentError, setPaymentError] = useState<string | null>(
     paymentParam === 'failed' || paymentParam === 'cancelled'
-      ? 'La tentative de paiement a été interrompue ou a échoué. Vous pouvez réessayer ci-dessous ou choisir un autre mode de paiement.'
+      ? 'La tentative de paiement a été interrompue ou annulée sur PayTech. Vous pouvez réessayer ci-dessous ou choisir un autre mode de règlement.'
       : null
   );
   const [codConfirmed, setCodConfirmed] = useState(false);
@@ -69,7 +70,7 @@ export function InvoicePage() {
 
   // Payment Initiation Mutation
   const initiatePaymentMutation = useMutation({
-    mutationFn: async (method: 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY') => {
+    mutationFn: async (method: SelectedPaymentMethod) => {
       if (!order) throw new Error('Commande non chargée');
       return paymentService.initiatePayment({
         orderNumber: order.orderNumber,
@@ -88,6 +89,7 @@ export function InvoicePage() {
 
       const redirectUrl =
         paymentData?.paymentUrl ||
+        paymentData?.redirectUrl ||
         paymentData?.launchUrl ||
         paymentData?.wave_launch_url ||
         paymentData?.payment_url;
@@ -97,6 +99,7 @@ export function InvoicePage() {
           const path = redirectUrl.replace(window.location.origin, '');
           navigate(path);
         } else {
+          // Redirect to the official PayTech hosted secure payment checkout page
           window.location.href = redirectUrl;
         }
       } else {
@@ -105,7 +108,7 @@ export function InvoicePage() {
     },
     onError: (err: any) => {
       setPaymentError(
-        err.message || 'Impossible de lancer le paiement sécurisé. Veuillez réessayer ou contacter notre assistance.'
+        err.message || 'Impossible de lancer la session PayTech. Veuillez réessayer ou contacter notre service client.'
       );
     },
   });
@@ -417,7 +420,9 @@ export function InvoicePage() {
               <div className="flex justify-between items-center pt-1">
                 <span>Mode retenu :</span>
                 <span className="font-bold text-[#2C1E21]">
-                  {order.paymentMethod === 'WAVE'
+                  {order.paymentMethod === 'PAYTECH'
+                    ? 'PayTech Sénégal (Wave, OM, Carte)'
+                    : order.paymentMethod === 'WAVE'
                     ? 'Wave Sénégal'
                     : order.paymentMethod === 'ORANGE_MONEY'
                     ? 'Orange Money'
@@ -488,12 +493,64 @@ export function InvoicePage() {
           </div>
 
           <p className="text-xs text-[#7A6469]">
-            Sélectionnez votre moyen de paiement préféré pour finaliser votre commande. Votre facture reste accessible et téléchargeable à tout moment.
+            Sélectionnez votre moyen de paiement sécurisé pour finaliser votre commande. Votre facture officielle reste accessible et téléchargeable à tout moment.
           </p>
 
           {/* Payment Method Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* 1. Wave */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 1. PayTech (Primary & Aggregator) */}
+            <label
+              onClick={() => setSelectedMethod('PAYTECH')}
+              className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 md:col-span-2 ${
+                selectedMethod === 'PAYTECH'
+                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
+                  : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#8B3A4A] text-white flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
+                    💳
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-base text-[#2C1E21]">
+                        Passerelle Officielle PayTech Sénégal
+                      </p>
+                      <span className="text-[10px] font-bold text-[#8B3A4A] bg-[#FAF2F0] border border-[#F4E2E0] px-2.5 py-0.5 rounded-full">
+                        ✨ Recommandé (Multi-moyens)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+                      <span className="text-[10px] font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">
+                        🌊 Wave
+                      </span>
+                      <span className="text-[10px] font-semibold text-orange-800 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md">
+                        🍊 Orange Money
+                      </span>
+                      <span className="text-[10px] font-semibold text-purple-800 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                        🟣 Free Money
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                        💳 Carte Bancaire Visa / Mastercard
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  checked={selectedMethod === 'PAYTECH'}
+                  onChange={() => setSelectedMethod('PAYTECH')}
+                  className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
+                />
+              </div>
+              <p className="text-[11px] text-[#7A6469] leading-relaxed pt-1">
+                Règlement immédiat et sécurisé via la page hébergée PayTech. Vous pourrez choisir librement Wave, Orange Money, Free Money ou Carte Bancaire avec confirmation automatique instantanée.
+              </p>
+            </label>
+
+            {/* 2. Wave Direct */}
             <label
               onClick={() => setSelectedMethod('WAVE')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
@@ -504,13 +561,13 @@ export function InvoicePage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center font-bold text-base shadow-xs">
+                  <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
                     🌊
                   </div>
                   <div>
                     <p className="font-bold text-sm text-[#2C1E21]">Wave Sénégal</p>
                     <span className="text-[10px] font-semibold text-sky-800 bg-sky-50 px-2 py-0.5 rounded-full">
-                      Paiement Mobile 100% Sécurisé
+                      Paiement Mobile Direct
                     </span>
                   </div>
                 </div>
@@ -523,41 +580,7 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Validation instantanée via votre application Wave avec scan QR ou numéro de mobile.
-              </p>
-            </label>
-
-            {/* 2. Orange Money */}
-            <label
-              onClick={() => setSelectedMethod('ORANGE_MONEY')}
-              className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
-                selectedMethod === 'ORANGE_MONEY'
-                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm'
-                  : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold text-base shadow-xs">
-                    🍊
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-[#2C1E21]">Orange Money</p>
-                    <span className="text-[10px] font-semibold text-orange-800 bg-orange-50 px-2 py-0.5 rounded-full">
-                      WebPay Sénégal
-                    </span>
-                  </div>
-                </div>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  checked={selectedMethod === 'ORANGE_MONEY'}
-                  onChange={() => setSelectedMethod('ORANGE_MONEY')}
-                  className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
-                />
-              </div>
-              <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Règlement sécurisé par code OTP ou application Orange Money Sénégal.
+                Validation directe via votre application Wave avec scan QR ou numéro de mobile.
               </p>
             </label>
 
@@ -572,7 +595,7 @@ export function InvoicePage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-xs">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
                     💵
                   </div>
                   <div>
@@ -615,7 +638,9 @@ export function InvoicePage() {
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
               {initiatePaymentMutation.isPending ? (
-                <span>Connexion au paiement...</span>
+                <span>Connexion sécurisée en cours...</span>
+              ) : selectedMethod === 'PAYTECH' ? (
+                <span>Payer maintenant avec PayTech ({formatCFA(order.total)})</span>
               ) : selectedMethod === 'WAVE' ? (
                 <span>Payer avec Wave ({formatCFA(order.total)})</span>
               ) : selectedMethod === 'ORANGE_MONEY' ? (

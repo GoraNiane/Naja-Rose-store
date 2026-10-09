@@ -17,11 +17,11 @@ export function PaymentRedirectPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const method = (searchParams.get('method') || 'WAVE') as 'WAVE' | 'ORANGE_MONEY';
+  const method = (searchParams.get('method') || 'PAYTECH') as 'PAYTECH' | 'WAVE' | 'ORANGE_MONEY';
   const orderId = searchParams.get('orderId') || '';
   const orderNumber = searchParams.get('orderNumber') || '';
   const amount = Number(searchParams.get('amount') || 0);
-  const txId = searchParams.get('txId') || '';
+  const txId = searchParams.get('txId') || searchParams.get('token') || '';
   const isSandbox = searchParams.get('sandbox') === 'true';
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -46,36 +46,46 @@ export function PaymentRedirectPage() {
   };
 
   const isWave = method === 'WAVE';
+  const isPayTech = method === 'PAYTECH';
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+      <div className="w-full max-w-lg bg-white rounded-3xl border border-[#F4E2E0] shadow-xl overflow-hidden">
         {/* Sandbox Warning Banner */}
         {isSandbox && (
-          <div className="bg-amber-500 text-slate-950 px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-slate-950" />
-            <span>MODE TEST / SANDBOX ACTIF — AUCUN DÉBIT RÉEL</span>
+          <div className="bg-[#8B3A4A] text-white px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-[#FAF2F0]" />
+            <span>MODE TEST / SANDBOX ACTIF — PASSERELLE PAYTECH SÉNÉGAL</span>
           </div>
         )}
 
         {/* Provider Header Banner */}
         <div
           className={`p-6 sm:p-8 text-white ${
-            isWave
+            isPayTech
+              ? 'bg-gradient-to-r from-[#8B3A4A] via-[#A84B5E] to-[#2C1E21]'
+              : isWave
               ? 'bg-gradient-to-r from-sky-500 to-blue-600'
               : 'bg-gradient-to-r from-amber-600 to-orange-600'
           }`}
         >
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <span className="text-[10px] uppercase tracking-widest font-black opacity-80">
-                Passerelle Sécurisée
+              <span className="text-[10px] uppercase tracking-widest font-black opacity-90">
+                Passerelle Officielle Sécurisée
               </span>
-              <h1 className="text-2xl font-black font-display tracking-tight flex items-center gap-2">
-                {isWave ? 'Wave Sénégal' : 'Orange Money WebPay'}
+              <h1 className="text-2xl font-black font-serif tracking-tight flex items-center gap-2">
+                {isPayTech ? 'PayTech Sénégal' : isWave ? 'Wave Sénégal' : 'Orange Money WebPay'}
               </h1>
+              {isPayTech && (
+                <div className="flex items-center gap-1.5 pt-1 text-[11px] opacity-95">
+                  <span className="bg-white/20 px-2 py-0.5 rounded-md font-bold">🌊 Wave</span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded-md font-bold">🍊 OM</span>
+                  <span className="bg-white/20 px-2 py-0.5 rounded-md font-bold">💳 Carte</span>
+                </div>
+              )}
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-xs">
               <Smartphone className="w-6 h-6" />
             </div>
           </div>
@@ -98,9 +108,15 @@ export function PaymentRedirectPage() {
           <div className="bg-slate-50 rounded-2xl p-4 text-xs text-slate-600 space-y-2 border border-slate-100">
             <div className="flex items-center gap-2 font-bold text-slate-900">
               <Lock className="w-4 h-4 text-emerald-600" />
-              <span>Instructions de paiement ({method})</span>
+              <span>Instructions de paiement ({method === 'PAYTECH' ? 'PayTech Sénégal' : method})</span>
             </div>
-            {isWave ? (
+            {isPayTech ? (
+              <p>
+                Sur la page officielle PayTech, vous pouvez choisir librement votre mode de règlement :{' '}
+                <strong>Wave Sénégal</strong> (scan ou numéro), <strong>Orange Money</strong> (OTP),{' '}
+                <strong>Free Money</strong> ou <strong>Carte Bancaire Visa / Mastercard</strong>.
+              </p>
+            ) : isWave ? (
               <p>
                 Dans un environnement réel, l'application Wave s'ouvre automatiquement ou affiche un QR code sécurisé.
                 Validez la transaction avec votre code PIN Wave.
@@ -113,7 +129,7 @@ export function PaymentRedirectPage() {
             )}
             {txId && (
               <p className="text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-200">
-                Session ID : {txId}
+                Session Token : {txId}
               </p>
             )}
           </div>
@@ -129,14 +145,14 @@ export function PaymentRedirectPage() {
           {isSandbox ? (
             <div className="space-y-3 pt-2">
               <Button
-                variant={isWave ? 'primary' : 'gold'}
+                variant={isPayTech ? 'gold' : isWave ? 'primary' : 'gold'}
                 size="lg"
                 className="w-full justify-center"
                 disabled={isProcessing}
                 onClick={() => handleSimulatePayment('PAID')}
                 leftIcon={isProcessing ? <Spinner size="sm" /> : <CheckCircle2 className="w-4 h-4" />}
               >
-                {isProcessing ? 'Confirmation en cours...' : 'Simuler Validation du Paiement (Succès)'}
+                {isProcessing ? 'Validation PayTech en cours...' : 'Simuler Validation du Paiement (Succès)'}
               </Button>
 
               <Button

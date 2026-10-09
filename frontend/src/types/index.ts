@@ -4,7 +4,7 @@ export type OrderStatus = 'NEW' | 'CONFIRMED' | 'PREPARING' | 'SHIPPED' | 'DELIV
 
 export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
-export type PaymentMethod = 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+export type PaymentMethod = 'PAYTECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
 
 export interface Color {
   id: string;
