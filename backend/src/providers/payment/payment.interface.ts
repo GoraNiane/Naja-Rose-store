@@ -17,6 +17,8 @@ export interface PaymentResult {
   transactionId?: string;
   paymentUrl?: string;
   launchUrl?: string;
+  waveLaunchUrl?: string;
+  customerPhone?: string;
   token?: string;
   status: PaymentStatus;
   isSandbox: boolean;

@@ -48,21 +48,27 @@ export class WaveProvider implements PaymentProvider {
     // 1. Sandbox / Mock mode fallback
     if (this.isSandbox) {
       const mockSessionId = `wave_sess_sbx_${params.orderNumber}_${Date.now()}`;
-      const sandboxRedirectUrl = `/checkout/payment-redirect?method=WAVE&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&txId=${mockSessionId}&sandbox=true`;
+      const customerPhone = params.customerPhone || '';
+      const sandboxRedirectUrl = `/checkout/payment-redirect?method=WAVE&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&phone=${encodeURIComponent(customerPhone)}&txId=${mockSessionId}&sandbox=true`;
+      const waveDeepLink = `wave://send?phone=${encodeURIComponent(customerPhone)}&amount=${params.amount}&memo=${encodeURIComponent(params.orderNumber)}`;
 
       return {
         transactionId: mockSessionId,
         paymentUrl: sandboxRedirectUrl,
         launchUrl: sandboxRedirectUrl,
+        waveLaunchUrl: waveDeepLink,
+        customerPhone,
         status: PaymentStatus.PENDING,
         isSandbox: true,
-        instructions: 'Scannez le QR code Wave ou validez la transaction sur votre application Wave (Simulation)',
+        instructions: `Ouvrez l'application Wave ou validez la transaction sur votre mobile avec le numéro ${customerPhone || 'enregistré'}`,
         metadata: {
           provider: 'WAVE',
           mode: 'SANDBOX',
           clientReference: params.orderNumber,
+          customerPhone,
           amount: params.amount,
           currency: params.currency || 'XOF',
+          deepLink: waveDeepLink,
           initiatedAt: new Date().toISOString(),
         },
       };

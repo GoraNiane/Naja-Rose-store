@@ -53,21 +53,24 @@ export class OrangeMoneyProvider implements PaymentProvider {
     // 1. Sandbox / Mock mode fallback
     if (this.isSandbox) {
       const mockToken = `om_tok_sbx_${params.orderNumber}_${Date.now()}`;
-      const sandboxRedirectUrl = `/checkout/payment-redirect?method=ORANGE_MONEY&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&txId=${mockToken}&sandbox=true`;
+      const customerPhone = params.customerPhone || '';
+      const sandboxRedirectUrl = `/checkout/payment-redirect?method=ORANGE_MONEY&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&phone=${encodeURIComponent(customerPhone)}&txId=${mockToken}&sandbox=true`;
 
       return {
         transactionId: mockToken,
         token: mockToken,
         paymentUrl: sandboxRedirectUrl,
         launchUrl: sandboxRedirectUrl,
+        customerPhone,
         status: PaymentStatus.PENDING,
         isSandbox: true,
         instructions:
-          'Composez le #144#391# pour obtenir votre code d’autorisation Orange Money ou validez via l’application Max it (Simulation)',
+          `Composez le #144#391# avec votre numéro ${customerPhone || 'Orange'} ou validez via l’application Max it`,
         metadata: {
           provider: 'ORANGE_MONEY',
           mode: 'SANDBOX',
           orderReference: `NAJA-${params.orderNumber}`,
+          customerPhone,
           amount: params.amount,
           currency: params.currency || 'XOF',
           initiatedAt: new Date().toISOString(),
