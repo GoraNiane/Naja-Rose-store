@@ -120,6 +120,8 @@ export class ProductService {
 
       // Sync variants if provided
       if (input.variants !== undefined) {
+        const currentVariantIds: string[] = [];
+
         for (const v of input.variants) {
           const existingVariant = await tx.productVariant.findFirst({
             where: {
@@ -130,6 +132,7 @@ export class ProductService {
           });
 
           if (existingVariant) {
+            currentVariantIds.push(existingVariant.id);
             await tx.productVariant.update({
               where: { id: existingVariant.id },
               data: {
@@ -140,7 +143,7 @@ export class ProductService {
               },
             });
           } else {
-            await tx.productVariant.create({
+            const createdVar = await tx.productVariant.create({
               data: {
                 productId: id,
                 colorId: v.colorId || null,
@@ -151,7 +154,22 @@ export class ProductService {
                 isActive: v.isActive ?? true,
               },
             });
+            currentVariantIds.push(createdVar.id);
           }
+        }
+
+        // Deactivate or delete variants that are no longer part of the product
+        if (currentVariantIds.length > 0) {
+          await tx.productVariant.updateMany({
+            where: {
+              productId: id,
+              id: { notIn: currentVariantIds },
+            },
+            data: {
+              isActive: false,
+              stock: 0,
+            },
+          });
         }
       }
 
@@ -172,7 +190,30 @@ export class ProductService {
     if (!existing) {
       throw ApiError.notFound('Produit introuvable');
     }
-    return productRepository.delete(id);
+
+    return prisma.$transaction(async (tx) => {
+      const variants = await tx.productVariant.findMany({
+        where: { productId: id },
+      });
+      const variantIds = variants.map((v) => v.id);
+
+      if (variantIds.length > 0) {
+        await tx.stockMovement.deleteMany({
+          where: { variantId: { in: variantIds } },
+        });
+        await tx.productVariant.deleteMany({
+          where: { productId: id },
+        });
+      }
+
+      await tx.productImage.deleteMany({
+        where: { productId: id },
+      });
+
+      return tx.product.delete({
+        where: { id },
+      });
+    });
   }
 }
 
