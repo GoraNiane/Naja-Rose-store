@@ -57,13 +57,13 @@ export function ScrollReveal({
         x: 0,
         scale: 1,
       }}
-      viewport={{ once, amount: threshold }}
+      viewport={{ once, amount: threshold, margin: '0px 0px -30px 0px' }}
       transition={{
         duration,
         delay,
         ease: LUXURY_EASE,
       }}
-      className={className}
+      className={`transform-gpu ${className}`}
       {...props}
     >
       {children}
@@ -141,7 +141,7 @@ export function StaggerItem({
   };
 
   return (
-    <motion.div variants={variants} className={className}>
+    <motion.div variants={variants} className={`transform-gpu ${className}`}>
       {children}
     </motion.div>
   );

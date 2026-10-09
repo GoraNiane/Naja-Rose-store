@@ -3,26 +3,39 @@
 @tailwind utilities;
 
 @layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   body {
-    @apply bg-[#FBFBF9] text-slate-900 antialiased font-sans;
-    text-rendering: optimizeLegibility;
+    @apply bg-[#FAF7F6] text-[#2C1E21] antialiased font-sans;
+    text-rendering: optimizeSpeed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight text-slate-900;
+    @apply font-display tracking-tight text-[#2C1E21];
+  }
+
+  img {
+    content-visibility: auto;
+    image-rendering: auto;
   }
 }
 
-/* Custom smooth scroll and scrollbar */
-html {
-  scroll-behavior: smooth;
-}
-
+/* Custom smooth scroll and luxury scrollbar */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -54,6 +67,8 @@ html {
   will-change: transform;
   transform: translate3d(0, 0, 0);
   animation: marquee 75s linear infinite;
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 .animate-marquee:hover,
@@ -61,14 +76,23 @@ html {
   animation-play-state: paused;
 }
 
-/* Dynamic Scroll & Landing micro-animations */
+/* Dynamic Scroll & Landing micro-animations with GPU layer */
 @keyframes softFloat {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+  0%, 100% { transform: translate3d(0, 0px, 0); }
+  50% { transform: translate3d(0, -6px, 0); }
 }
 
 .animate-soft-float {
   animation: softFloat 4s ease-in-out infinite;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Hardware accelerated utility */
+.gpu-layer {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }
 
 
