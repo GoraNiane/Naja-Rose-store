@@ -45,8 +45,8 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <SplashScreen
-          duration={1200}
-          showOncePerSession={true}
+          duration={5000}
+          showOncePerSession={false}
           onFinish={() => setIsSplashDone(true)}
         />
         <div className="min-h-screen">
