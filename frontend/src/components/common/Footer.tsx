@@ -1,5 +1,5 @@
 import { APP_CONFIG } from '../../lib/constants';
-import { Phone, Mail, MapPin, Heart, ShieldCheck, Truck, Sparkles, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, Heart, ShieldCheck, Truck, Sparkles, MessageCircle, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BrandLogo } from './BrandLogo';
 
@@ -114,6 +114,15 @@ export function Footer() {
               <li>
                 <Link to="/#contact" className="hover:text-[#E7A8B4] transition-colors">
                   Assistance Clientèle
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/admin/login"
+                  className="hover:text-[#E7A8B4] transition-colors flex items-center gap-1.5 pt-1 text-white/80 font-medium"
+                >
+                  <Lock className="w-3.5 h-3.5 text-[#E7A8B4]" />
+                  <span>Espace Administration</span>
                 </Link>
               </li>
             </ul>

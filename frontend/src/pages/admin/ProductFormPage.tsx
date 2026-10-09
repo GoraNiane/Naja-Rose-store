@@ -9,7 +9,17 @@ import { ImageUploader, type UploadedImage } from '../../components/admin/ImageU
 import { ColorSelector } from '../../components/admin/ColorSelector';
 import { SizeSelector } from '../../components/admin/SizeSelector';
 import { VariantMatrixTable, type GeneratedVariant } from '../../components/admin/VariantMatrixTable';
-import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
+import { formatCFA } from '../../lib/utils';
+import {
+  ArrowLeft,
+  Save,
+  AlertCircle,
+  Tag,
+  Percent,
+  Calendar,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
 
 export function ProductFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,9 +31,16 @@ export function ProductFormPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [isActive, setIsActive] = useState(true);
+
+  // Pricing & Promotion State
   const [price, setPrice] = useState<number | ''>('');
   const [oldPrice, setOldPrice] = useState<number | ''>('');
-  const [isActive, setIsActive] = useState(true);
+  const [isPromo, setIsPromo] = useState(false);
+  const [promoMode, setPromoMode] = useState<'by_price' | 'by_percent'>('by_price');
+  const [discountPercent, setDiscountPercent] = useState<number | ''>(20);
+  const [promoDurationType, setPromoDurationType] = useState<'48h' | '7d' | '14d' | '30d' | 'custom'>('7d');
+  const [promoEndDate, setPromoEndDate] = useState<string>('');
 
   // Photos (Max 7)
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -60,15 +77,45 @@ export function ProductFormPage() {
     enabled: isEditMode,
   });
 
+  // Helper to set duration preset date
+  const setDurationPreset = (preset: '48h' | '7d' | '14d' | '30d' | 'custom') => {
+    setPromoDurationType(preset);
+    const now = new Date();
+    if (preset === '48h') {
+      now.setDate(now.getDate() + 2);
+    } else if (preset === '7d') {
+      now.setDate(now.getDate() + 7);
+    } else if (preset === '14d') {
+      now.setDate(now.getDate() + 14);
+    } else if (preset === '30d') {
+      now.setDate(now.getDate() + 30);
+    }
+    if (preset !== 'custom') {
+      setPromoEndDate(now.toISOString().split('T')[0]);
+    }
+  };
+
   // Populate data when editing
   useEffect(() => {
     if (existingProduct) {
       setName(existingProduct.name);
       setDescription(existingProduct.description || '');
       setCategoryId(existingProduct.categoryId);
-      setPrice(Number(existingProduct.price));
-      setOldPrice(existingProduct.oldPrice ? Number(existingProduct.oldPrice) : '');
       setIsActive(existingProduct.isActive);
+
+      const p = Number(existingProduct.price);
+      const op = existingProduct.oldPrice ? Number(existingProduct.oldPrice) : '';
+
+      setPrice(p);
+      setOldPrice(op);
+
+      if (op && Number(op) > p) {
+        setIsPromo(true);
+        const calculatedPercent = Math.round(((Number(op) - p) / Number(op)) * 100);
+        setDiscountPercent(calculatedPercent);
+      } else {
+        setIsPromo(false);
+      }
 
       setImages(
         existingProduct.images.map((img) => ({
@@ -99,15 +146,44 @@ export function ProductFormPage() {
           isActive: v.isActive,
         }))
       );
+    } else {
+      // Default duration preset for new promo
+      setDurationPreset('7d');
     }
   }, [existingProduct]);
 
+  // Synchronize Percentage calculations
+  const handleDiscountPercentChange = (percentVal: number | '') => {
+    setDiscountPercent(percentVal);
+    if (percentVal !== '' && oldPrice && Number(oldPrice) > 0) {
+      const discounted = Math.round(Number(oldPrice) * (1 - Number(percentVal) / 100));
+      setPrice(discounted);
+    }
+  };
+
+  const handleRegularPriceChange = (val: number | '') => {
+    setOldPrice(val);
+    if (isPromo && promoMode === 'by_percent' && val !== '' && discountPercent !== '') {
+      const discounted = Math.round(Number(val) * (1 - Number(discountPercent) / 100));
+      setPrice(discounted);
+    }
+  };
+
+  const handlePromoPriceChange = (val: number | '') => {
+    setPrice(val);
+    if (val !== '' && oldPrice && Number(oldPrice) > Number(val)) {
+      const pct = Math.round(((Number(oldPrice) - Number(val)) / Number(oldPrice)) * 100);
+      setDiscountPercent(pct);
+    }
+  };
+
   // Regenerate/Sync variant combinations when colors, sizes, or product name changes
   useEffect(() => {
-    const cleanProdCode = (name || 'PROD')
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '')
-      .slice(0, 6) || 'PROD';
+    const cleanProdCode =
+      (name || 'PROD')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 6) || 'PROD';
 
     const hasColors = selectedColorIds.length > 0;
     const hasSizes = selectedSizeIds.length > 0;
@@ -189,7 +265,6 @@ export function ProductFormPage() {
         });
       }
     } else {
-      // Single standard variant (no color, no size specified)
       const autoSku = `NJ-${cleanProdCode}-STD`;
       const existing = variants[0];
       newVariants.push({
@@ -210,17 +285,19 @@ export function ProductFormPage() {
     mutationFn: async () => {
       if (!name.trim()) throw new Error('Le nom du produit est obligatoire');
       if (!categoryId) throw new Error('Veuillez sélectionner une catégorie');
-      if (!price || Number(price) <= 0) throw new Error('Veuillez spécifier un prix valide');
+      if (!price || Number(price) <= 0) throw new Error('Veuillez spécifier un prix de vente valide');
       if (images.length === 0) throw new Error('Veuillez ajouter au moins une photo');
       if (images.length > 7) throw new Error('Un produit ne peut pas avoir plus de 7 photos');
       if (variants.length === 0) throw new Error('Veuillez spécifier le stock pour au moins une variante');
+
+      const finalOldPrice = isPromo && oldPrice && Number(oldPrice) > Number(price) ? Number(oldPrice) : null;
 
       const payload = {
         name: name.trim(),
         description: description.trim() || null,
         categoryId,
         price: Number(price),
-        oldPrice: oldPrice ? Number(oldPrice) : null,
+        oldPrice: finalOldPrice,
         isActive,
         images: images.map((img, i) => ({
           url: img.url,
@@ -251,7 +328,7 @@ export function ProductFormPage() {
       navigate('/admin/products');
     },
     onError: (err: any) => {
-      setFormError(err.message || 'Échec de l\'enregistrement du produit');
+      setFormError(err.message || "Échec de l'enregistrement du produit");
     },
   });
 
@@ -267,6 +344,12 @@ export function ProductFormPage() {
 
   const selectedColorsObjects = allColors.filter((c) => selectedColorIds.includes(c.id));
   const selectedSizesObjects = allSizes.filter((s) => selectedSizeIds.includes(s.id));
+
+  // Calculated discount badge for live preview
+  const liveDiscountPercent =
+    isPromo && oldPrice && price && Number(oldPrice) > Number(price)
+      ? Math.round(((Number(oldPrice) - Number(price)) / Number(oldPrice)) * 100)
+      : null;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-16">
@@ -284,7 +367,7 @@ export function ProductFormPage() {
               {isEditMode ? `Modifier le Produit : ${name}` : 'Créer un Nouveau Produit'}
             </h1>
             <p className="text-xs text-slate-500">
-              Photos Cloudinary (max 7), configuration des couleurs, tailles et stocks individuels
+              Gestion complète du catalogue, promotions avec calcul automatique de remise et stocks
             </p>
           </div>
         </div>
@@ -321,7 +404,7 @@ export function ProductFormPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Nom du produit"
-              placeholder="Ex: Grand Boubou Bazin Riche Prestige"
+              placeholder="Ex: Robe longue fluide en soie ou Ensemble 3 pièces"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -347,62 +430,325 @@ export function ProductFormPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Input
-              label="Prix de Vente (FCFA)"
-              type="number"
-              min="0"
-              placeholder="Ex: 65000"
-              value={price}
-              onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')}
-              required
-            />
-            <Input
-              label="Ancien Prix (FCFA) - Optionnel"
-              type="number"
-              min="0"
-              placeholder="Ex: 75000"
-              value={oldPrice}
-              onChange={(e) => setOldPrice(e.target.value ? Number(e.target.value) : '')}
-              helperText="Affiché barré pour créer un effet promo"
-            />
-            <div className="space-y-1.5 flex flex-col justify-center">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Visibilité en Boutique
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer pt-2">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
-                />
-                <span className="text-xs font-semibold text-slate-800">
-                  {isActive ? '✓ Produit Actif (En ligne)' : '✗ Produit Masqué (Brouillon)'}
-                </span>
-              </label>
-            </div>
-          </div>
-
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
               Description & Entretien
             </label>
             <textarea
-              rows={4}
-              placeholder="Détails du tissu (Bazin riche, lin, wax), finitions, conseils de lavage..."
+              rows={3}
+              placeholder="Détails du tissu (soie, lin, satin), finitions, conseils de lavage..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
             />
           </div>
+
+          {/* Visibility toggle */}
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-slate-900 block">Statut de Visibilité</span>
+              <span className="text-[11px] text-slate-500">
+                {isActive ? 'Le produit est visible en ligne pour les clients' : 'Le produit est masqué (Brouillon)'}
+              </span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
         </div>
 
-        {/* 2. Galerie Photos (Max 7) */}
+        {/* 2. Tarification & Gestion des Promotions */}
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <h2 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">
+                2
+              </span>
+              Prix & Promotion
+            </h2>
+
+            {/* Promotion Toggle Switch */}
+            <div className="flex items-center gap-3 bg-[#FAF0EE] px-4 py-2 rounded-2xl border border-[#F2E5E2]">
+              <Tag className="w-4 h-4 text-[#8B3A4A]" />
+              <span className="text-xs font-bold text-[#2C1E21]">Ce produit est-il en promotion ?</span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPromo}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setIsPromo(checked);
+                    if (checked) {
+                      if (!oldPrice && price) {
+                        setOldPrice(price);
+                        const discounted = Math.round(Number(price) * (1 - (Number(discountPercent) || 20) / 100));
+                        setPrice(discounted);
+                      }
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8B3A4A]"></div>
+              </label>
+            </div>
+          </div>
+
+          {!isPromo ? (
+            /* Mode Standard (Pas de promotion) */
+            <div className="max-w-md">
+              <Input
+                label="Prix de Vente Régulier (FCFA)"
+                type="number"
+                min="0"
+                placeholder="Ex: 25000"
+                value={price}
+                onChange={(e) => setPrice(e.target.value ? Number(e.target.value) : '')}
+                required
+                helperText="Prix facturé au client lors de l'achat"
+              />
+            </div>
+          ) : (
+            /* Mode Promotionnel Complet */
+            <div className="space-y-6 bg-[#FAF9F8] p-5 sm:p-6 rounded-2xl border border-[#F2E5E2]">
+              {/* Promo Method Tabs */}
+              <div className="flex gap-2 p-1 bg-white rounded-xl border border-slate-200 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setPromoMode('by_price')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    promoMode === 'by_price'
+                      ? 'bg-[#8B3A4A] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Mode 1 : Prix Barré & Prix Promo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPromoMode('by_percent');
+                    if (oldPrice && discountPercent) {
+                      const discounted = Math.round(Number(oldPrice) * (1 - Number(discountPercent) / 100));
+                      setPrice(discounted);
+                    }
+                  }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    promoMode === 'by_percent'
+                      ? 'bg-[#8B3A4A] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Percent className="w-3 h-3" />
+                  Mode 2 : Réduction en Pourcentage (-%)
+                </button>
+              </div>
+
+              {/* Form inputs depending on promoMode */}
+              {promoMode === 'by_price' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="1. Prix Réel Régulier (Prix Barré) - FCFA"
+                    type="number"
+                    min="0"
+                    placeholder="Ex: 50000"
+                    value={oldPrice}
+                    onChange={(e) => handleRegularPriceChange(e.target.value ? Number(e.target.value) : '')}
+                    required
+                    helperText="Ce prix sera affiché avec un trait barré"
+                  />
+                  <Input
+                    label="2. Prix de la Promotion (Prix Facturé) - FCFA"
+                    type="number"
+                    min="0"
+                    placeholder="Ex: 40000"
+                    value={price}
+                    onChange={(e) => handlePromoPriceChange(e.target.value ? Number(e.target.value) : '')}
+                    required
+                    helperText="Nouveau prix promotionnel payé par le client"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="max-w-md">
+                    <Input
+                      label="Prix Réel de Base (FCFA)"
+                      type="number"
+                      min="0"
+                      placeholder="Ex: 50000"
+                      value={oldPrice}
+                      onChange={(e) => handleRegularPriceChange(e.target.value ? Number(e.target.value) : '')}
+                      required
+                      helperText="Prix d'origine avant réduction"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                      Sélectionnez le Pourcentage de Remise (-%)
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {[10, 15, 20, 25, 30, 40, 50].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => handleDiscountPercentChange(pct)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                            discountPercent === pct
+                              ? 'bg-[#1C1819] text-white shadow-xs scale-105'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-400'
+                          }`}
+                        >
+                          -{pct}%
+                        </button>
+                      ))}
+                      <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1">
+                        <span className="text-xs text-slate-500">Autre :</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          placeholder="%"
+                          value={discountPercent}
+                          onChange={(e) => handleDiscountPercentChange(e.target.value ? Number(e.target.value) : '')}
+                          className="w-12 text-xs font-bold text-slate-900 focus:outline-none"
+                        />
+                        <span className="text-xs font-bold text-slate-500">%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Durée de la Promotion */}
+              <div className="pt-4 border-t border-[#EFE5E3] space-y-3">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#382B2F] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#8B3A4A]" />
+                  Durée & Validité de la Promotion
+                </label>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDurationPreset('48h')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      promoDurationType === '48h'
+                        ? 'bg-[#8B3A4A] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    ⚡ Flash 48 Heures
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDurationPreset('7d')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      promoDurationType === '7d'
+                        ? 'bg-[#8B3A4A] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    📅 7 Jours (1 Semaine)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDurationPreset('14d')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      promoDurationType === '14d'
+                        ? 'bg-[#8B3A4A] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    14 Jours
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDurationPreset('30d')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      promoDurationType === '30d'
+                        ? 'bg-[#8B3A4A] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    30 Jours
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPromoDurationType('custom')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      promoDurationType === 'custom'
+                        ? 'bg-[#8B3A4A] text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:border-slate-400'
+                    }`}
+                  >
+                    Date personnalisée
+                  </button>
+                </div>
+
+                {promoDurationType === 'custom' && (
+                  <div className="max-w-xs pt-1">
+                    <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                      Date de fin de promotion :
+                    </label>
+                    <input
+                      type="date"
+                      value={promoEndDate}
+                      onChange={(e) => setPromoEndDate(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#8B3A4A]"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Aperçu en direct de l'effet Promotionnel */}
+              {oldPrice && price && (
+                <div className="p-4 bg-white rounded-2xl border border-[#F2E5E2] shadow-2xs space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B3A4A] flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Aperçu en direct sur la boutique
+                  </span>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-xl font-bold text-[#1A1816]">
+                      {formatCFA(Number(price))}
+                    </span>
+                    <span className="text-sm text-[#A0888E] line-through font-normal">
+                      {formatCFA(Number(oldPrice))}
+                    </span>
+                    {liveDiscountPercent && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#1C1819] text-white">
+                        -{liveDiscountPercent}%
+                      </span>
+                    )}
+                    <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      Économie : {formatCFA(Number(oldPrice) - Number(price))}
+                    </span>
+                  </div>
+
+                  {promoEndDate && (
+                    <p className="text-[11px] text-[#644D52] flex items-center gap-1.5 pt-1">
+                      <Calendar className="w-3.5 h-3.5 text-[#8B3A4A]" />
+                      <span>
+                        Offre promotionnelle valable jusqu'au <strong>{promoEndDate}</strong>
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 3. Galerie Photos (Max 7) */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <h2 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">
-              2
+              3
             </span>
             Photos du Produit (Cloudinary - Max 7)
           </h2>
@@ -410,11 +756,11 @@ export function ProductFormPage() {
           <ImageUploader images={images} onChange={setImages} />
         </div>
 
-        {/* 3. Couleurs et Tailles */}
+        {/* 4. Couleurs et Tailles */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <h2 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">
-              3
+              4
             </span>
             Sélection des Couleurs & Tailles
           </h2>
@@ -436,11 +782,11 @@ export function ProductFormPage() {
           </div>
         </div>
 
-        {/* 4. Matrice des Variantes et des Stocks */}
+        {/* 5. Matrice des Variantes et des Stocks */}
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
           <h2 className="font-display font-bold text-base text-slate-900 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-amber-600 text-white text-xs flex items-center justify-center font-bold">
-              4
+              5
             </span>
             Matrice des Variantes & Stocks
           </h2>

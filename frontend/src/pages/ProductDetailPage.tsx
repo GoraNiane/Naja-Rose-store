@@ -208,14 +208,24 @@ export function ProductDetailPage() {
               Réf : {selectedVariant?.sku || 'Collection Naja Rose'}
             </p>
 
-            <div className="mt-3.5 flex items-baseline gap-3">
+            <div className="mt-3.5 flex items-center gap-3 flex-wrap">
               <span className="text-2xl sm:text-3xl font-bold text-[#1A1816]">
                 {formatCFA(currentPrice)}
               </span>
               {product.oldPrice && Number(product.oldPrice) > currentPrice && (
-                <span className="text-xs sm:text-sm text-[#A0888E] line-through">
-                  {formatCFA(product.oldPrice)}
-                </span>
+                <>
+                  <span className="text-sm sm:text-base text-[#A0888E] line-through">
+                    {formatCFA(product.oldPrice)}
+                  </span>
+                  {discountPercent && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#1C1819] text-white shadow-2xs">
+                      -{discountPercent}%
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                    Économie : {formatCFA(Number(product.oldPrice) - currentPrice)}
+                  </span>
+                </>
               )}
             </div>
           </div>
