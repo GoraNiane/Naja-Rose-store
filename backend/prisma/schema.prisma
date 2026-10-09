@@ -35,9 +35,12 @@ enum OrderStatus {
 enum PaymentStatus {
   PENDING
   PROCESSING
+  PARTIALLY_PAID
   PAID
   FAILED
+  CANCELLED
   REFUNDED
+  REVIEW_REQUIRED
 }
 
 enum PaymentMethod {
@@ -231,6 +234,8 @@ model Order {
   subtotal        Decimal        @db.Decimal(10, 2)
   deliveryFee     Decimal        @db.Decimal(10, 2)
   total           Decimal        @db.Decimal(10, 2)
+  amountPaid      Decimal        @default(0) @db.Decimal(10, 2)
+  remainingBalance Decimal       @default(0) @db.Decimal(10, 2)
   paymentMethod   PaymentMethod
   paymentStatus   PaymentStatus  @default(PENDING)
   status          OrderStatus    @default(NEW)

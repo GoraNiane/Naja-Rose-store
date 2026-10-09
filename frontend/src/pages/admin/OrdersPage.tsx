@@ -16,10 +16,11 @@ import {
   Truck,
   Check,
   XCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Toutes les commandes' },
+  { value: '', label: 'Tous les statuts' },
   { value: 'NEW', label: 'Nouvelles (NEW)' },
   { value: 'CONFIRMED', label: 'Confirmées (CONFIRMED)' },
   { value: 'PREPARING', label: 'En préparation (PREPARING)' },
@@ -44,6 +45,47 @@ function getStatusBadgeClass(status: string) {
       return 'bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]';
     default:
       return 'bg-[#FAF9F7] text-[#77706D] border-[#E9E2DF]';
+  }
+}
+
+function getPaymentBadge(paymentStatus: string, amountPaid: number, total: number) {
+  switch (paymentStatus) {
+    case 'PAID':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          <Check className="w-3 h-3" /> Intégralement réglé
+        </span>
+      );
+    case 'PARTIALLY_PAID':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+          Partiel ({formatCFA(amountPaid)})
+        </span>
+      );
+    case 'REVIEW_REQUIRED':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300 animate-pulse">
+          <AlertTriangle className="w-3 h-3 text-orange-600" /> Vérif. Requise
+        </span>
+      );
+    case 'FAILED':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+          <XCircle className="w-3 h-3" /> Échoué
+        </span>
+      );
+    case 'CANCELLED':
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+          Annulé
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+          En attente ({formatCFA(total)})
+        </span>
+      );
   }
 }
 
@@ -89,10 +131,10 @@ export function OrdersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black font-display text-slate-900">
-            Gestion des Commandes & Facturation
+            Gestion des Commandes & Rapprochement des Soldes
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Supervisez les commandes clients, mettez à jour les statuts logistiques et éditez les factures PDF.
+            Supervisez les factures, les transactions confirmées, les soldes restants et les alertes d'anomalies.
           </p>
         </div>
 
@@ -144,206 +186,214 @@ export function OrdersPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-4 px-5">Commande</th>
+                  <th className="py-4 px-5">Commande & Facture</th>
                   <th className="py-4 px-5">Client & Zone</th>
-                  <th className="py-4 px-5">Articles</th>
-                  <th className="py-4 px-5">Total</th>
-                  <th className="py-4 px-5">Paiement</th>
-                  <th className="py-4 px-5">Statut</th>
+                  <th className="py-4 px-5">Facture & Rapprochement Solde</th>
+                  <th className="py-4 px-5">Moyen de Paiement</th>
+                  <th className="py-4 px-5">Statut Paiement</th>
+                  <th className="py-4 px-5">Statut Livraison</th>
                   <th className="py-4 px-5">Date</th>
                   <th className="py-4 px-5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
-                {orders.map((order: any) => (
-                  <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                    {/* Commande */}
-                    <td className="py-4 px-5">
-                      <p className="font-mono font-bold text-slate-900">{order.orderNumber}</p>
-                      {order.invoice && (
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {order.invoice.invoiceNumber}
+                {orders.map((order: any) => {
+                  const total = Math.round(Number(order.total || 0));
+                  const amountPaid = Math.round(
+                    Number(order.amountPaid !== undefined ? order.amountPaid : (order.paymentStatus === 'PAID' ? total : 0))
+                  );
+                  const remainingBalance = Math.max(
+                    0,
+                    Math.round(
+                      Number(order.remainingBalance !== undefined ? order.remainingBalance : (order.paymentStatus === 'PAID' ? 0 : total))
+                    )
+                  );
+
+                  return (
+                    <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
+                      {/* Commande */}
+                      <td className="py-4 px-5">
+                        <p className="font-mono font-bold text-slate-900">{order.orderNumber}</p>
+                        {order.invoice && (
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            {order.invoice.invoiceNumber}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-500">
+                          {order.items?.length || 0} article(s)
                         </span>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* Client */}
-                    <td className="py-4 px-5">
-                      <p className="font-bold text-slate-800">
-                        {order.customer?.firstName} {order.customer?.lastName}
-                      </p>
-                      <p className="text-slate-500 text-[11px]">{order.phone}</p>
-                      <span className="text-[10px] text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded">
-                        {order.deliveryZone?.name || 'Dakar'}
-                      </span>
-                    </td>
-
-                    {/* Articles Snapshot */}
-                    <td className="py-4 px-5">
-                      <div className="space-y-1 max-w-xs">
-                        <p className="font-semibold text-slate-800">
-                          {order.items?.length || 0} article{order.items?.length > 1 ? 's' : ''}
+                      {/* Client */}
+                      <td className="py-4 px-5">
+                        <p className="font-bold text-slate-800">
+                          {order.customer?.firstName} {order.customer?.lastName}
                         </p>
-                        <div className="text-[11px] text-slate-500 truncate">
-                          {order.items?.map((item: any) => (
-                            <span key={item.id} className="block truncate">
-                              • {item.quantity}x {item.productName} ({item.colorName || 'Std'}/{item.sizeName || 'TU'})
-                            </span>
-                          ))}
+                        <p className="text-slate-500 text-[11px]">{order.phone}</p>
+                        <span className="text-[10px] text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded">
+                          {order.deliveryZone?.name || 'Dakar'}
+                        </span>
+                      </td>
+
+                      {/* Facture & Solde (Requirement 6) */}
+                      <td className="py-4 px-5">
+                        <div className="space-y-0.5 font-mono">
+                          <p className="font-display font-black text-slate-950 text-xs">
+                            Total : {formatCFA(total)}
+                          </p>
+                          <p className="text-[11px] text-emerald-700 font-semibold">
+                            Payé : {formatCFA(amountPaid)}
+                          </p>
+                          <p className={`text-[11px] font-bold ${remainingBalance > 0 ? 'text-[#8B3A4A]' : 'text-slate-400'}`}>
+                            Solde : {formatCFA(remainingBalance)}
+                          </p>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Total */}
-                    <td className="py-4 px-5">
-                      <p className="font-display font-black text-slate-950 text-sm">
-                        {formatCFA(order.total)}
-                      </p>
-                      <span className="text-[10px] text-slate-400">
-                        Dont {formatCFA(order.deliveryFee)} livr.
-                      </span>
-                    </td>
-
-                    {/* Paiement */}
-                    <td className="py-4 px-5">
-                      <p className="font-semibold text-slate-800 text-[11px]">
-                        {order.paymentMethod === 'WAVE'
-                          ? 'Wave'
-                          : order.paymentMethod === 'ORANGE_MONEY'
-                          ? 'Orange Money'
-                          : 'À la livraison'}
-                      </p>
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          order.paymentStatus === 'PAID'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {order.paymentStatus === 'PAID' ? 'Payé' : 'En attente'}
-                      </span>
-                    </td>
-
-                    {/* Statut Badge */}
-                    <td className="py-4 px-5">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(
-                          order.status
-                        )}`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-
-                    {/* Date */}
-                    <td className="py-4 px-5 text-slate-500 whitespace-nowrap">
-                      {formatDate(order.createdAt)}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-4 px-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                        {/* Status workflow transitions */}
-                        {order.status === 'NEW' && (
-                          <button
-                            onClick={() =>
-                              updateStatusMutation.mutate({ id: order.id, status: 'CONFIRMED' })
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[11px] font-bold"
-                            title="Confirmer la commande"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5 inline mr-1" />
-                            Confirmer
-                          </button>
+                      {/* Moyen de Paiement */}
+                      <td className="py-4 px-5">
+                        <p className="font-semibold text-slate-800 text-[11px]">
+                          {order.paymentMethod === 'PAYTECH'
+                            ? 'Carte Bancaire'
+                            : order.paymentMethod === 'WAVE'
+                            ? 'Wave Sénégal'
+                            : order.paymentMethod === 'ORANGE_MONEY'
+                            ? 'Orange Money'
+                            : 'Paiement Livraison'}
+                        </p>
+                        {order.payments && order.payments.length > 0 && (
+                          <span className="text-[10px] text-slate-400">
+                            {order.payments.length} trans. enregistrée(s)
+                          </span>
                         )}
+                      </td>
 
-                        {order.status === 'CONFIRMED' && (
-                          <button
-                            onClick={() =>
-                              updateStatusMutation.mutate({ id: order.id, status: 'PREPARING' })
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 text-[11px] font-bold"
-                            title="Mettre en préparation"
-                          >
-                            <Package className="w-3.5 h-3.5 inline mr-1" />
-                            Préparer
-                          </button>
-                        )}
+                      {/* Statut Paiement (Requirement 4 & 6) */}
+                      <td className="py-4 px-5">
+                        {getPaymentBadge(order.paymentStatus, amountPaid, total)}
+                      </td>
 
-                        {order.status === 'PREPARING' && (
-                          <button
-                            onClick={() =>
-                              updateStatusMutation.mutate({ id: order.id, status: 'SHIPPED' })
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 text-[11px] font-bold"
-                            title="Confier au coursier"
-                          >
-                            <Truck className="w-3.5 h-3.5 inline mr-1" />
-                            Expédier
-                          </button>
-                        )}
+                      {/* Statut Logistique */}
+                      <td className="py-4 px-5">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${getStatusBadgeClass(
+                            order.status
+                          )}`}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
 
-                        {order.status === 'SHIPPED' && (
-                          <button
-                            onClick={() =>
-                              updateStatusMutation.mutate({
-                                id: order.id,
-                                status: 'DELIVERED',
-                                paymentStatus:
-                                  order.paymentMethod === 'CASH_ON_DELIVERY' ? 'PAID' : undefined,
-                              })
-                            }
-                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold"
-                            title="Marquer comme livrée"
-                          >
-                            <Check className="w-3.5 h-3.5 inline mr-1" />
-                            Livrer
-                          </button>
-                        )}
+                      {/* Date */}
+                      <td className="py-4 px-5 text-slate-500 whitespace-nowrap">
+                        {formatDate(order.createdAt)}
+                      </td>
 
-                        {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
-                          <button
-                            onClick={() => {
-                              if (
-                                window.confirm(
-                                  `Êtes-vous sûr de vouloir annuler la commande ${order.orderNumber} ? Le stock sera restitué.`
-                                )
-                              ) {
-                                updateStatusMutation.mutate({ id: order.id, status: 'CANCELLED' });
+                      {/* Actions */}
+                      <td className="py-4 px-5 text-right">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* Status workflow transitions */}
+                          {order.status === 'NEW' && (
+                            <button
+                              onClick={() =>
+                                updateStatusMutation.mutate({ id: order.id, status: 'CONFIRMED' })
                               }
-                            }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                            title="Annuler la commande"
+                              className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-[11px] font-bold"
+                              title="Confirmer la commande"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5 inline mr-1" />
+                              Confirmer
+                            </button>
+                          )}
+
+                          {order.status === 'CONFIRMED' && (
+                            <button
+                              onClick={() =>
+                                updateStatusMutation.mutate({ id: order.id, status: 'PREPARING' })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 text-[11px] font-bold"
+                              title="Mettre en préparation"
+                            >
+                              <Package className="w-3.5 h-3.5 inline mr-1" />
+                              Préparer
+                            </button>
+                          )}
+
+                          {order.status === 'PREPARING' && (
+                            <button
+                              onClick={() =>
+                                updateStatusMutation.mutate({ id: order.id, status: 'SHIPPED' })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 text-[11px] font-bold"
+                              title="Confier au coursier"
+                            >
+                              <Truck className="w-3.5 h-3.5 inline mr-1" />
+                              Expédier
+                            </button>
+                          )}
+
+                          {order.status === 'SHIPPED' && (
+                            <button
+                              onClick={() =>
+                                updateStatusMutation.mutate({
+                                  id: order.id,
+                                  status: 'DELIVERED',
+                                  paymentStatus:
+                                    order.paymentMethod === 'CASH_ON_DELIVERY' ? 'PAID' : undefined,
+                                })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[11px] font-bold"
+                              title="Marquer comme livrée"
+                            >
+                              <Check className="w-3.5 h-3.5 inline mr-1" />
+                              Livrer
+                            </button>
+                          )}
+
+                          {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                            <button
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Êtes-vous sûr de vouloir annuler la commande ${order.orderNumber} ? Le stock sera restitué.`
+                                  )
+                                ) {
+                                  updateStatusMutation.mutate({ id: order.id, status: 'CANCELLED' });
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                              title="Annuler la commande"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {/* PDF Invoice */}
+                          <a
+                            href={orderService.getInvoiceUrl(order.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-800 hover:bg-amber-50"
+                            title="Facture PDF"
                           >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        )}
+                            <FileText className="w-4 h-4" />
+                          </a>
 
-                        {/* PDF Invoice */}
-                        <a
-                          href={orderService.getInvoiceUrl(order.id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-amber-800 hover:bg-amber-50"
-                          title="Facture PDF"
-                        >
-                          <FileText className="w-4 h-4" />
-                        </a>
-
-                        {/* Client view link */}
-                        <a
-                          href={`/orders/${order.orderNumber}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                          title="Suivi client"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {/* Client view link */}
+                          <a
+                            href={`/orders/${order.orderNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                            title="Suivi client"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

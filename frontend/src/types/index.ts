@@ -2,9 +2,29 @@ export type Role = 'ADMIN' | 'CUSTOMER';
 
 export type OrderStatus = 'NEW' | 'CONFIRMED' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
-export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REFUNDED';
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'REFUNDED'
+  | 'REVIEW_REQUIRED';
 
 export type PaymentMethod = 'PAYTECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  provider: PaymentMethod;
+  transactionId?: string | null;
+  amount: number | string;
+  status: PaymentStatus;
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Color {
   id: string;

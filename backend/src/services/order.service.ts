@@ -197,6 +197,8 @@ export class OrderService {
           subtotal,
           deliveryFee,
           total,
+          amountPaid: new Prisma.Decimal(0),
+          remainingBalance: total,
           paymentMethod: input.paymentMethod,
           paymentStatus: PaymentStatus.PENDING,
           status: OrderStatus.NEW,

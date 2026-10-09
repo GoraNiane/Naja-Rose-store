@@ -19,6 +19,7 @@ import {
   X,
   MapPin,
   User,
+  AlertTriangle,
 } from 'lucide-react';
 
 export function InvoicesPage() {
@@ -47,10 +48,10 @@ export function InvoicesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black font-display text-slate-900">
-            Gestion des Factures Clients
+            Gestion des Factures & Rapprochement des Paiements
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Recherchez, consultez, imprimez et téléchargez les factures officielles générées pour les commandes.
+            Recherchez, vérifiez les montants payés, les soldes restants et téléchargez les factures officielles.
           </p>
         </div>
 
@@ -95,8 +96,11 @@ export function InvoicesPage() {
             >
               <option value="">Tous les statuts</option>
               <option value="PAID">Payées</option>
+              <option value="PARTIALLY_PAID">Partiellement payées</option>
+              <option value="REVIEW_REQUIRED">Vérification requise</option>
               <option value="PENDING">En attente</option>
               <option value="FAILED">Échouées</option>
+              <option value="CANCELLED">Annulées</option>
             </select>
           </div>
         </div>
@@ -125,7 +129,7 @@ export function InvoicesPage() {
                 <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-4 px-5">Numéro Facture</th>
                   <th className="py-4 px-5">Commande & Client</th>
-                  <th className="py-4 px-5">Montant Total</th>
+                  <th className="py-4 px-5">Montants & Solde</th>
                   <th className="py-4 px-5">Moyen de Paiement</th>
                   <th className="py-4 px-5">Statut Paiement</th>
                   <th className="py-4 px-5">Date d'Émission</th>
@@ -135,7 +139,20 @@ export function InvoicesPage() {
               <tbody className="divide-y divide-slate-100 text-xs">
                 {invoices.map((inv: any) => {
                   const order = inv.order;
-                  const isPaid = order?.paymentStatus === 'PAID';
+                  const total = Math.round(Number(order?.total || 0));
+                  const amountPaid = Math.round(
+                    Number(order?.amountPaid !== undefined ? order.amountPaid : (order?.paymentStatus === 'PAID' ? total : 0))
+                  );
+                  const remainingBalance = Math.max(
+                    0,
+                    Math.round(
+                      Number(order?.remainingBalance !== undefined ? order.remainingBalance : (order?.paymentStatus === 'PAID' ? 0 : total))
+                    )
+                  );
+                  const isPaid = order?.paymentStatus === 'PAID' || remainingBalance === 0;
+                  const isPartiallyPaid = order?.paymentStatus === 'PARTIALLY_PAID';
+                  const isReviewRequired = order?.paymentStatus === 'REVIEW_REQUIRED';
+
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
                       {/* Numéro Facture */}
@@ -166,20 +183,27 @@ export function InvoicesPage() {
                         </span>
                       </td>
 
-                      {/* Total */}
+                      {/* Montants & Solde */}
                       <td className="py-4 px-5">
-                        <p className="font-display font-black text-slate-950 text-sm">
-                          {formatCFA(order?.total || 0)}
+                        <p className="font-display font-black text-slate-950 text-xs font-mono">
+                          Total : {formatCFA(total)}
                         </p>
-                        <span className="text-[10px] text-slate-400">
-                          Articles : {formatCFA(order?.subtotal || 0)}
-                        </span>
+                        <p className="text-[11px] text-emerald-700 font-semibold font-mono">
+                          Payé : {formatCFA(amountPaid)}
+                        </p>
+                        {remainingBalance > 0 && (
+                          <p className="text-[11px] text-[#8B3A4A] font-bold font-mono">
+                            Solde : {formatCFA(remainingBalance)}
+                          </p>
+                        )}
                       </td>
 
                       {/* Moyen de Paiement */}
                       <td className="py-4 px-5">
-                        <span className="font-medium text-slate-800 text-[11px]">
-                          {order?.paymentMethod === 'WAVE'
+                        <span className="font-medium text-slate-800 text-[11px] block">
+                          {order?.paymentMethod === 'PAYTECH'
+                            ? 'Carte Bancaire'
+                            : order?.paymentMethod === 'WAVE'
                             ? 'Wave Sénégal'
                             : order?.paymentMethod === 'ORANGE_MONEY'
                             ? 'Orange Money'
@@ -189,29 +213,27 @@ export function InvoicesPage() {
 
                       {/* Statut Paiement */}
                       <td className="py-4 px-5">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            isPaid
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : order?.paymentStatus === 'FAILED'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {isPaid ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3" /> Payée
-                            </>
-                          ) : order?.paymentStatus === 'FAILED' ? (
-                            <>
-                              <XCircle className="w-3 h-3" /> Échec
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-3 h-3" /> En attente
-                            </>
-                          )}
-                        </span>
+                        {isPaid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" /> Payée
+                          </span>
+                        ) : isPartiallyPaid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            Partiel ({formatCFA(amountPaid)})
+                          </span>
+                        ) : isReviewRequired ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300 animate-pulse">
+                            <AlertTriangle className="w-3 h-3 text-orange-600" /> Vérif. Requise
+                          </span>
+                        ) : order?.paymentStatus === 'FAILED' || order?.paymentStatus === 'CANCELLED' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                            <XCircle className="w-3 h-3" /> {order?.paymentStatus}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            <Clock className="w-3 h-3" /> En attente
+                          </span>
+                        )}
                       </td>
 
                       {/* Date */}
@@ -232,15 +254,19 @@ export function InvoicesPage() {
                           </button>
 
                           {/* Download PDF */}
-                          <a
-                            href={`/api/invoices/${inv.invoiceNumber}/pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg text-slate-600 hover:text-[#8B3A4A] hover:bg-[#FAF2F0] transition-colors"
+                          <button
+                            type="button"
+                            onClick={() =>
+                              orderService.downloadInvoicePdf(
+                                order?.orderNumber || order?.id,
+                                inv.invoiceNumber
+                              )
+                            }
+                            className="p-1.5 rounded-lg text-slate-600 hover:text-[#8B3A4A] hover:bg-[#FAF2F0] transition-colors cursor-pointer"
                             title="Télécharger PDF"
                           >
                             <Download className="w-4 h-4" />
-                          </a>
+                          </button>
 
                           {/* Client Invoice View */}
                           <a
@@ -367,8 +393,8 @@ export function InvoicesPage() {
               </div>
             </div>
 
-            {/* Totals */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs">
+            {/* Financial Balance Summary */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs font-mono">
               <div className="flex justify-between text-slate-600">
                 <span>Sous-total articles :</span>
                 <span className="font-bold text-slate-900 font-mono">
@@ -387,6 +413,18 @@ export function InvoicesPage() {
                   {formatCFA(selectedInvoice.order?.total || 0)}
                 </span>
               </div>
+              {selectedInvoice.order?.amountPaid !== undefined && (
+                <div className="pt-2 border-t border-dashed border-slate-200 space-y-1">
+                  <div className="flex justify-between text-emerald-800 font-semibold">
+                    <span>Total paiements confirmés :</span>
+                    <span>{formatCFA(selectedInvoice.order.amountPaid)}</span>
+                  </div>
+                  <div className="flex justify-between text-[#8B3A4A] font-bold">
+                    <span>Solde restant :</span>
+                    <span>{formatCFA(selectedInvoice.order.remainingBalance || 0)}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Actions */}
@@ -394,15 +432,19 @@ export function InvoicesPage() {
               <Button variant="outline" size="sm" onClick={() => setSelectedInvoice(null)}>
                 Fermer
               </Button>
-              <a
-                href={`/api/invoices/${selectedInvoice.invoiceNumber}/pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Button
+                variant="gold"
+                size="sm"
+                onClick={() =>
+                  orderService.downloadInvoicePdf(
+                    selectedInvoice.order?.orderNumber || selectedInvoice.order?.id,
+                    selectedInvoice.invoiceNumber
+                  )
+                }
+                leftIcon={<Download className="w-3.5 h-3.5" />}
               >
-                <Button variant="gold" size="sm" leftIcon={<Download className="w-3.5 h-3.5" />}>
-                  Télécharger la Facture PDF
-                </Button>
-              </a>
+                Télécharger la Facture PDF
+              </Button>
             </div>
           </div>
         </div>

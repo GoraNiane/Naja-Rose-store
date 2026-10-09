@@ -304,6 +304,18 @@ export class PayTechService {
     const isSignatureValid = this.verifyIpnSignature(payload);
     if (!isSignatureValid) {
       logger.error('[PayTech IPN] Signature validation failed! SHA256 hashes do not match credentials.');
+      await prisma.auditLog.create({
+        data: {
+          action: 'PAYTECH_IPN_SIGNATURE_INVALID',
+          entity: 'SECURITY',
+          entityId: (payload.ref_command as string) || 'UNKNOWN',
+          details: {
+            payload,
+            reason: 'SHA256 signature mismatch',
+          } as Prisma.InputJsonValue,
+        },
+      }).catch(() => null);
+
       throw ApiError.unauthorized('Signature de notification PayTech invalide');
     }
 
@@ -368,51 +380,153 @@ export class PayTechService {
       };
     }
 
-    // 3. Handle 'sale_complete' (Successful Payment)
+    const token = (payload.token as string) || `pt_${Date.now()}`;
+
+    // 3. IDEMPOTENCY CHECK:
+    // If a payment record with this transactionId (token) is already marked as PAID, avoid duplicate balance counting
+    const alreadyProcessedPayment = order.payments.find(
+      (p) => p.transactionId === token && p.status === PaymentStatus.PAID
+    );
+
+    if (alreadyProcessedPayment) {
+      logger.info(
+        `[PayTech IPN] [IDEMPOTENT] Payment token ${token} for order ${order.orderNumber} is already confirmed as PAID. Skipping duplicate processing.`
+      );
+      return {
+        success: true,
+        idempotent: true,
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        paymentStatus: order.paymentStatus,
+        amountPaid: Number(order.amountPaid || order.total),
+        remainingBalance: Number(order.remainingBalance || 0),
+        message: 'Notification IPN déjà traitée avec succès',
+      };
+    }
+
+    // 4. Calculate current verified balance from DB confirmed payments
+    const confirmedPayments = order.payments.filter((p) => p.status === PaymentStatus.PAID);
+    const currentPaidSum = confirmedPayments.reduce((acc, p) => acc + Number(p.amount), 0);
+    const orderTotal = Math.round(Number(order.total));
+    const currentRemainingBalance = Math.max(0, orderTotal - currentPaidSum);
+
+    // 5. Handle 'sale_complete' (Successful Payment)
     if (payload.type_event === 'sale_complete' || !payload.type_event) {
-      // Amount verification: Check that item_price matches order.total
-      if (payload.item_price !== undefined) {
-        const receivedPrice = Number(payload.item_price);
-        const expectedPrice = Number(order.total);
-        const priceDifference = Math.abs(receivedPrice - expectedPrice);
+      const receivedAmount =
+        payload.item_price !== undefined ? Math.round(Number(payload.item_price)) : currentRemainingBalance;
 
-        // In test mode, PayTech may deduct 100-150 CFA for simulation. In production, exact match required.
-        const isExactMatch = priceDifference < 1.0;
-        const isTestAmount = this.isTestEnv && (receivedPrice >= 100 && receivedPrice <= 150);
+      // In test env, PayTech may send 100-150 CFA test amount for sandbox simulations
+      const isTestAmount = this.isTestEnv && receivedAmount >= 100 && receivedAmount <= 150;
+      const effectivePaymentAmount = isTestAmount ? currentRemainingBalance : receivedAmount;
 
-        if (!isExactMatch && !isTestAmount) {
-          logger.error(
-            `[PayTech IPN] Amount mismatch! Expected: ${expectedPrice} XOF, Received: ${receivedPrice} XOF`
-          );
-          throw ApiError.badRequest(`Incohérence du montant payé (attendu: ${expectedPrice} XOF, reçu: ${receivedPrice} XOF)`);
-        }
-      }
+      // Check for Amount Anomalies:
+      // (a) Received amount <= 0
+      // (b) Received amount strictly exceeds the remaining balance (+1 FCFA tolerance)
+      const isExcessive = !isTestAmount && effectivePaymentAmount > currentRemainingBalance + 1;
+      const isInvalidAmount = effectivePaymentAmount <= 0;
 
-      // IDEMPOTENCY CHECK: If order is already PAID, return success without duplicate side-effects
-      const latestPayment = order.payments[0];
-      if (order.paymentStatus === PaymentStatus.PAID) {
-        logger.info(`[PayTech IPN] [IDEMPOTENT] Order ${order.orderNumber} is already confirmed as PAID. Skipping duplicate processing.`);
+      if (isExcessive || isInvalidAmount) {
+        logger.error(
+          `[PayTech IPN] [ANOMALY] Amount mismatch / Overpayment! Received: ${receivedAmount} XOF, Current Remaining: ${currentRemainingBalance} XOF, Order Total: ${orderTotal} XOF`
+        );
+
+        // Mark payment & order for REVIEW_REQUIRED without settling blindly
+        await prisma.$transaction(async (tx) => {
+          await tx.payment.create({
+            data: {
+              orderId: order.id,
+              provider: PaymentMethod.PAYTECH,
+              amount: new Prisma.Decimal(receivedAmount),
+              status: PaymentStatus.REVIEW_REQUIRED,
+              transactionId: token,
+              metadata: {
+                paymentMethodName: payload.payment_method || 'PayTech',
+                paytechToken: payload.token,
+                clientPhone: payload.client_phone,
+                anomaly: isExcessive ? 'AMOUNT_EXCEEDS_REMAINING_BALANCE' : 'INVALID_AMOUNT',
+                receivedAmount,
+                currentRemainingBalance,
+                orderTotal,
+                ipnReceivedAt: new Date().toISOString(),
+                rawIpn: payload,
+              } as Prisma.InputJsonValue,
+            },
+          });
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              paymentStatus: PaymentStatus.REVIEW_REQUIRED,
+            },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              action: 'PAYMENT_ANOMALY_REVIEW_REQUIRED',
+              entity: 'ORDER',
+              entityId: order.id,
+              details: {
+                orderNumber: order.orderNumber,
+                token,
+                receivedAmount,
+                currentRemainingBalance,
+                orderTotal,
+                reason: isExcessive
+                  ? `Le montant reçu (${receivedAmount} FCFA) dépasse le solde restant (${currentRemainingBalance} FCFA)`
+                  : `Le montant reçu (${receivedAmount} FCFA) est invalide`,
+              } as Prisma.InputJsonValue,
+            },
+          });
+
+          await tx.notification.create({
+            data: {
+              type: 'PAYMENT_REVIEW_REQUIRED',
+              title: `⚠️ Vérification requise pour ${order.orderNumber}`,
+              message: `Paiement PayTech de ${receivedAmount} FCFA reçu pour un solde restant de ${currentRemainingBalance} FCFA. Vérification requise.`,
+            },
+          });
+        });
+
         return {
-          success: true,
-          idempotent: true,
+          success: false,
+          reviewRequired: true,
           orderNumber: order.orderNumber,
-          status: PaymentStatus.PAID,
-          message: 'Notification already processed previously',
+          orderId: order.id,
+          paymentStatus: PaymentStatus.REVIEW_REQUIRED,
+          message: 'Montant reçu incohérent ou supérieur au solde. Commande marquée pour vérification manuelle.',
         };
       }
 
-      // 4. Atomic Transaction: Update Payment, Order, Invoice, and Audit Log
-      await prisma.$transaction(async (tx) => {
-        const transactionToken = payload.token || latestPayment?.transactionId || `paytech_${Date.now()}`;
+      // Valid payment amount!
+      const newPaidAmount = currentPaidSum + effectivePaymentAmount;
+      const newRemainingBalance = Math.max(0, orderTotal - newPaidAmount);
+      const isFullySettled = newRemainingBalance === 0;
 
-        if (latestPayment) {
+      const finalPaymentStatus = isFullySettled
+        ? PaymentStatus.PAID
+        : PaymentStatus.PARTIALLY_PAID;
+
+      const newOrderStatus =
+        isFullySettled && order.status === OrderStatus.NEW
+          ? OrderStatus.CONFIRMED
+          : order.status;
+
+      // Atomic Update
+      await prisma.$transaction(async (tx) => {
+        // Find existing pending payment for this token or create new confirmed record
+        const existingPending = order.payments.find(
+          (p) => p.transactionId === token || p.status === PaymentStatus.PENDING
+        );
+
+        if (existingPending && existingPending.status !== PaymentStatus.PAID) {
           await tx.payment.update({
-            where: { id: latestPayment.id },
+            where: { id: existingPending.id },
             data: {
+              amount: new Prisma.Decimal(effectivePaymentAmount),
               status: PaymentStatus.PAID,
-              transactionId: transactionToken,
+              transactionId: token,
               metadata: {
-                ...((latestPayment.metadata as Record<string, unknown>) || {}),
+                ...((existingPending.metadata as Record<string, unknown>) || {}),
                 paymentMethodName: payload.payment_method || 'PayTech',
                 paytechToken: payload.token,
                 clientPhone: payload.client_phone,
@@ -426,9 +540,9 @@ export class PayTechService {
             data: {
               orderId: order.id,
               provider: PaymentMethod.PAYTECH,
-              amount: order.total,
+              amount: new Prisma.Decimal(effectivePaymentAmount),
               status: PaymentStatus.PAID,
-              transactionId: transactionToken,
+              transactionId: token,
               metadata: {
                 paymentMethodName: payload.payment_method || 'PayTech',
                 paytechToken: payload.token,
@@ -440,48 +554,57 @@ export class PayTechService {
           });
         }
 
-        // Update Order Status: from NEW to CONFIRMED
-        const newOrderStatus = order.status === OrderStatus.NEW ? OrderStatus.CONFIRMED : order.status;
-
+        // Update Order balances & statuses
         await tx.order.update({
           where: { id: order.id },
           data: {
-            paymentStatus: PaymentStatus.PAID,
+            amountPaid: new Prisma.Decimal(newPaidAmount),
+            remainingBalance: new Prisma.Decimal(newRemainingBalance),
+            paymentStatus: finalPaymentStatus,
             status: newOrderStatus,
             paymentMethod: PaymentMethod.PAYTECH,
           },
         });
 
-        // Create Audit Log
+        // Audit Trail
         await tx.auditLog.create({
           data: {
-            action: 'PAYMENT_CONFIRMED',
+            action: isFullySettled ? 'PAYMENT_CONFIRMED' : 'PARTIAL_PAYMENT_CONFIRMED',
             entity: 'ORDER',
             entityId: order.id,
             details: {
               orderNumber: order.orderNumber,
               method: 'PAYTECH',
-              paytechMethod: payload.payment_method || 'Online Gateway',
-              amount: Number(order.total),
-              token: payload.token,
+              paytechMethod: payload.payment_method || 'Carte Bancaire / Mobile',
+              amountReceived: effectivePaymentAmount,
+              totalPaid: newPaidAmount,
+              remainingBalance: newRemainingBalance,
+              token,
               confirmedVia: 'PAYTECH_IPN',
             } as Prisma.InputJsonValue,
           },
         });
       });
 
-      logger.info(`[PayTech IPN] Order ${order.orderNumber} successfully updated to PAID / CONFIRMED`);
+      logger.info(
+        `[PayTech IPN] Order ${order.orderNumber} updated: status=${finalPaymentStatus}, paid=${newPaidAmount} XOF, remaining=${newRemainingBalance} XOF`
+      );
 
       return {
         success: true,
         orderNumber: order.orderNumber,
         orderId: order.id,
-        paymentStatus: PaymentStatus.PAID,
-        token: payload.token,
+        paymentStatus: finalPaymentStatus,
+        amountPaid: newPaidAmount,
+        remainingBalance: newRemainingBalance,
+        token,
+        message: isFullySettled
+          ? 'Paiement confirmé. Votre facture est intégralement réglée.'
+          : `Paiement partiel de ${effectivePaymentAmount} FCFA confirmé. Solde restant : ${newRemainingBalance} FCFA`,
       };
     }
 
-    // 5. Handle 'sale_canceled' or payment failure
+    // 6. Handle 'sale_canceled'
     if (payload.type_event === 'sale_canceled') {
       logger.info(`[PayTech IPN] Payment was cancelled by user for order ${order.orderNumber}`);
 
@@ -490,7 +613,7 @@ export class PayTechService {
         await prisma.payment.update({
           where: { id: latestPayment.id },
           data: {
-            status: PaymentStatus.FAILED,
+            status: PaymentStatus.CANCELLED,
             metadata: {
               ...((latestPayment.metadata as Record<string, unknown>) || {}),
               cancelledAt: new Date().toISOString(),
@@ -500,10 +623,20 @@ export class PayTechService {
         });
       }
 
+      if (currentPaidSum === 0 && order.paymentStatus !== PaymentStatus.PAID) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            paymentStatus: PaymentStatus.CANCELLED,
+          },
+        });
+      }
+
       return {
         success: true,
         orderNumber: order.orderNumber,
-        paymentStatus: PaymentStatus.FAILED,
+        orderId: order.id,
+        paymentStatus: PaymentStatus.CANCELLED,
         message: 'Payment cancelled on PayTech',
       };
     }

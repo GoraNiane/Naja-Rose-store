@@ -177,33 +177,114 @@ export class PaymentService {
     const latestPayment = order.payments[0];
 
     // 3. IDEMPOTENCY GUARD:
-    // If the payment is already confirmed as PAID, do not re-process or fire duplicate side-effects
-    if (latestPayment && latestPayment.status === PaymentStatus.PAID) {
+    const txId = webhookResult.transactionId;
+    const alreadyProcessed = txId && order.payments.some((p) => p.transactionId === txId && p.status === PaymentStatus.PAID);
+    if (alreadyProcessed) {
       logger.info(
-        `[PaymentService] [IDEMPOTENT] Order ${order.orderNumber} is already marked as PAID. Skipping duplicate webhook execution.`
+        `[PaymentService] [IDEMPOTENT] Webhook transaction ${txId} for order ${order.orderNumber} is already confirmed. Skipping duplicate.`
       );
       return {
         success: true,
         idempotent: true,
-        message: 'Payment was already processed as PAID previously',
         orderNumber: order.orderNumber,
-        status: PaymentStatus.PAID,
+        orderId: order.id,
+        paymentStatus: order.paymentStatus,
+        amountPaid: Number(order.amountPaid || order.total),
+        remainingBalance: Number(order.remainingBalance || 0),
+        message: 'Notification de paiement déjà traitée',
       };
     }
 
-    // 4. Atomic transaction update
-    await prisma.$transaction(async (tx) => {
-      const isPaid = webhookResult.paymentStatus === PaymentStatus.PAID;
+    // 4. Calculate current verified balance from DB confirmed payments
+    const confirmedPayments = order.payments.filter((p) => p.status === PaymentStatus.PAID);
+    const currentPaidSum = confirmedPayments.reduce((acc, p) => acc + Number(p.amount), 0);
+    const orderTotal = Math.round(Number(order.total));
+    const currentRemainingBalance = Math.max(0, orderTotal - currentPaidSum);
 
-      // Update or create payment record
-      if (latestPayment) {
+    const isPaid = webhookResult.paymentStatus === PaymentStatus.PAID;
+    const receivedAmount = webhookResult.amount ? Math.round(Number(webhookResult.amount)) : currentRemainingBalance;
+
+    // Check for anomalies if payment is claimed to be paid
+    if (isPaid && (receivedAmount <= 0 || receivedAmount > currentRemainingBalance + 1)) {
+      logger.error(
+        `[PaymentService] [ANOMALY] Webhook amount mismatch for order ${order.orderNumber}: Received ${receivedAmount} XOF, Remaining ${currentRemainingBalance} XOF`
+      );
+
+      await prisma.$transaction(async (tx) => {
+        await tx.payment.create({
+          data: {
+            orderId: order.id,
+            provider: method,
+            amount: new Prisma.Decimal(receivedAmount),
+            status: PaymentStatus.REVIEW_REQUIRED,
+            transactionId: txId || `review_${Date.now()}`,
+            metadata: {
+              ...webhookResult.metadata,
+              anomaly: 'AMOUNT_EXCEEDS_REMAINING_BALANCE',
+              receivedAmount,
+              currentRemainingBalance,
+              orderTotal,
+              webhookProcessedAt: new Date().toISOString(),
+            } as Prisma.InputJsonValue,
+          },
+        });
+
+        await tx.order.update({
+          where: { id: order.id },
+          data: { paymentStatus: PaymentStatus.REVIEW_REQUIRED },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            action: 'PAYMENT_ANOMALY_REVIEW_REQUIRED',
+            entity: 'ORDER',
+            entityId: order.id,
+            details: {
+              orderNumber: order.orderNumber,
+              method,
+              receivedAmount,
+              currentRemainingBalance,
+              orderTotal,
+            } as Prisma.InputJsonValue,
+          },
+        });
+      });
+
+      return {
+        success: false,
+        reviewRequired: true,
+        orderNumber: order.orderNumber,
+        paymentStatus: PaymentStatus.REVIEW_REQUIRED,
+        message: 'Montant reçu incohérent avec le solde restant. Vérification requise.',
+      };
+    }
+
+    // 5. Atomic transaction update
+    let finalPaymentStatus = webhookResult.paymentStatus;
+    let newPaidAmount = currentPaidSum;
+    let newRemainingBalance = currentRemainingBalance;
+
+    if (isPaid) {
+      newPaidAmount = currentPaidSum + receivedAmount;
+      newRemainingBalance = Math.max(0, orderTotal - newPaidAmount);
+      finalPaymentStatus = newRemainingBalance === 0 ? PaymentStatus.PAID : PaymentStatus.PARTIALLY_PAID;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Find matching pending payment or create new record
+      const existingPending = order.payments.find(
+        (p) => (txId && p.transactionId === txId) || p.status === PaymentStatus.PENDING
+      );
+
+      if (existingPending && existingPending.status !== PaymentStatus.PAID) {
         await tx.payment.update({
-          where: { id: latestPayment.id },
+          where: { id: existingPending.id },
           data: {
             status: webhookResult.paymentStatus,
-            transactionId: webhookResult.transactionId || latestPayment.transactionId,
+            transactionId: txId || existingPending.transactionId,
+            amount: isPaid ? new Prisma.Decimal(receivedAmount) : existingPending.amount,
             metadata: {
-              ...((latestPayment.metadata as Record<string, unknown>) || {}),
+              ...((existingPending.metadata as Record<string, unknown>) || {}),
               ...webhookResult.metadata,
               webhookProcessedAt: new Date().toISOString(),
             } as Prisma.InputJsonValue,
@@ -214,9 +295,9 @@ export class PaymentService {
           data: {
             orderId: order.id,
             provider: method,
-            amount: webhookResult.amount ? new Prisma.Decimal(webhookResult.amount) : order.total,
+            amount: new Prisma.Decimal(receivedAmount),
             status: webhookResult.paymentStatus,
-            transactionId: webhookResult.transactionId,
+            transactionId: txId || `tx_${Date.now()}`,
             metadata: {
               ...webhookResult.metadata,
               webhookProcessedAt: new Date().toISOString(),
@@ -225,31 +306,36 @@ export class PaymentService {
         });
       }
 
-      // Update Order Status
-      // When payment is confirmed PAID and order is currently NEW, advance to CONFIRMED
+      // Update Order Status and Balances
       const newOrderStatus =
-        isPaid && order.status === OrderStatus.NEW ? OrderStatus.CONFIRMED : order.status;
+        finalPaymentStatus === PaymentStatus.PAID && order.status === OrderStatus.NEW
+          ? OrderStatus.CONFIRMED
+          : order.status;
 
       await tx.order.update({
         where: { id: order.id },
         data: {
-          paymentStatus: webhookResult.paymentStatus,
+          amountPaid: new Prisma.Decimal(newPaidAmount),
+          remainingBalance: new Prisma.Decimal(newRemainingBalance),
+          paymentStatus: finalPaymentStatus,
           status: newOrderStatus,
         },
       });
 
-      // Log notification / audit trail
+      // Audit log
       if (isPaid) {
         await tx.auditLog.create({
           data: {
-            action: 'PAYMENT_CONFIRMED',
+            action: finalPaymentStatus === PaymentStatus.PAID ? 'PAYMENT_CONFIRMED' : 'PARTIAL_PAYMENT_CONFIRMED',
             entity: 'ORDER',
             entityId: order.id,
             details: {
               orderNumber: order.orderNumber,
               method,
-              amount: Number(order.total),
-              transactionId: webhookResult.transactionId,
+              amountReceived: receivedAmount,
+              totalPaid: newPaidAmount,
+              remainingBalance: newRemainingBalance,
+              transactionId: txId,
               confirmedVia: 'WEBHOOK',
             } as Prisma.InputJsonValue,
           },
@@ -258,15 +344,17 @@ export class PaymentService {
     });
 
     logger.info(
-      `[PaymentService] Successfully processed webhook for order ${order.orderNumber} -> ${webhookResult.paymentStatus}`
+      `[PaymentService] Successfully processed webhook for order ${order.orderNumber} -> ${finalPaymentStatus} (paid: ${newPaidAmount} / ${orderTotal})`
     );
 
     return {
       success: true,
       orderNumber: order.orderNumber,
       orderId: order.id,
-      paymentStatus: webhookResult.paymentStatus,
-      transactionId: webhookResult.transactionId,
+      paymentStatus: finalPaymentStatus,
+      amountPaid: newPaidAmount,
+      remainingBalance: newRemainingBalance,
+      transactionId: txId,
     };
   }
 
@@ -291,6 +379,14 @@ export class PaymentService {
     }
 
     const latestPayment = order.payments[0];
+    const confirmedPayments = order.payments.filter((p) => p.status === PaymentStatus.PAID);
+    const calculatedPaidSum = confirmedPayments.reduce((acc, p) => acc + Number(p.amount), 0);
+    const orderTotal = Math.round(Number(order.total));
+    const calculatedRemaining = Math.max(0, orderTotal - calculatedPaidSum);
+
+    const isPaid = order.paymentStatus === PaymentStatus.PAID || calculatedRemaining === 0;
+    const isPartiallyPaid = order.paymentStatus === PaymentStatus.PARTIALLY_PAID || (calculatedPaidSum > 0 && calculatedRemaining > 0);
+    const isReviewRequired = order.paymentStatus === PaymentStatus.REVIEW_REQUIRED;
 
     return {
       orderId: order.id,
@@ -298,12 +394,24 @@ export class PaymentService {
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
       orderStatus: order.status,
-      total: Number(order.total),
-      subtotal: Number(order.subtotal),
-      deliveryFee: Number(order.deliveryFee),
+      total: orderTotal,
+      subtotal: Math.round(Number(order.subtotal)),
+      deliveryFee: Math.round(Number(order.deliveryFee)),
+      amountPaid: calculatedPaidSum,
+      remainingBalance: calculatedRemaining,
       transactionId: latestPayment?.transactionId,
       updatedAt: latestPayment?.updatedAt || order.updatedAt,
-      isPaid: order.paymentStatus === PaymentStatus.PAID,
+      isPaid,
+      isPartiallyPaid,
+      isReviewRequired,
+      payments: order.payments.map((p) => ({
+        id: p.id,
+        provider: p.provider,
+        transactionId: p.transactionId,
+        amount: Math.round(Number(p.amount)),
+        status: p.status,
+        createdAt: p.createdAt,
+      })),
     };
   }
 
