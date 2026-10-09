@@ -269,11 +269,26 @@ export function InvoicePreview({
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B3A4A] flex items-center gap-1.5">
               <CreditCard className="w-3.5 h-3.5" /> Règlement Sélectionné
             </span>
-            <p className="text-sm font-bold text-[#2C1E21]">{paymentInfo.name}</p>
+            <div className="flex items-center gap-2 pt-1">
+              {invoice.paymentMethod === 'WAVE' ? (
+                <img
+                  src="/images/payments/wave-logo.jpg"
+                  alt="Wave Sénégal"
+                  className="w-5 h-5 rounded-full object-cover shadow-2xs shrink-0"
+                />
+              ) : invoice.paymentMethod === 'ORANGE_MONEY' ? (
+                <img
+                  src="/images/payments/orange-money-logo.jpg"
+                  alt="Orange Money"
+                  className="w-5 h-5 rounded object-contain shadow-2xs shrink-0 bg-white p-0.5 border border-[#FED7AA]"
+                />
+              ) : null}
+              <p className="text-sm font-bold text-[#2C1E21]">{paymentInfo.name}</p>
+            </div>
             <p className="text-xs text-[#7A6469]">
               {invoice.paymentMethod === 'CASH_ON_DELIVERY'
                 ? 'Règlement du montant total à la remise du colis par notre livreur à Dakar.'
-                : 'Paiement mobile instantané et sécurisé via application Wave ou Orange Money.'}
+                : 'Paiement mobile instantané et sécurisé via application Wave, Orange Money ou PayTech.'}
             </p>
             <div className="pt-1 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />

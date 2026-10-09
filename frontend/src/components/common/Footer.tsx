@@ -160,11 +160,39 @@ export function Footer() {
           </div>
         </ScrollReveal>
 
-        <div className="mt-12 pt-8 border-t border-[#3F2B30] flex flex-col sm:flex-row items-center justify-between text-xs text-[#A0888E] gap-4">
-          <p>© {new Date().getFullYear()} Naja Rose Store Sénégal. Elegance Style Garanties.</p>
-          <p className="flex items-center gap-1">
-            Fait avec <Heart className="w-3.5 h-3.5 text-[#E7A8B4] fill-[#E7A8B4]" /> à Dakar
-          </p>
+        <div className="mt-12 pt-8 border-t border-[#3F2B30] flex flex-col md:flex-row items-center justify-between text-xs text-[#A0888E] gap-4">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+            <span className="text-[11px] text-[#A0888E]">Moyens acceptés :</span>
+            <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded-md shadow-2xs">
+              <img
+                src="/images/payments/wave-logo.jpg"
+                alt="Wave Sénégal"
+                className="w-4 h-4 rounded-full object-cover"
+              />
+              <span className="text-[10px] font-bold text-[#1E293B]">Wave</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded-md shadow-2xs">
+              <img
+                src="/images/payments/orange-money-logo.jpg"
+                alt="Orange Money"
+                className="w-4 h-4 rounded object-contain"
+              />
+              <span className="text-[10px] font-bold text-[#1E293B]">Orange Money</span>
+            </div>
+            <span className="bg-[#382B2F] text-[#E7A8B4] border border-[#523A40] text-[10px] font-semibold px-2 py-0.5 rounded-md">
+              PayTech SN
+            </span>
+            <span className="bg-[#382B2F] text-[#E7A8B4] border border-[#523A40] text-[10px] font-semibold px-2 py-0.5 rounded-md">
+              💵 Livraison
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 text-center sm:text-right">
+            <p>© {new Date().getFullYear()} Naja Rose Store Sénégal. Elegance Style Garanties.</p>
+            <p className="flex items-center gap-1">
+              Fait avec <Heart className="w-3.5 h-3.5 text-[#E7A8B4] fill-[#E7A8B4]" /> à Dakar
+            </p>
+          </div>
         </div>
       </div>
     </footer>

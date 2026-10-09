@@ -508,8 +508,8 @@ export function InvoicePage() {
               }`}
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#8B3A4A] text-white flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-[#8B3A4A] text-white flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
                     💳
                   </div>
                   <div>
@@ -518,21 +518,31 @@ export function InvoicePage() {
                         Passerelle Officielle PayTech Sénégal
                       </p>
                       <span className="text-[10px] font-bold text-[#8B3A4A] bg-[#FAF2F0] border border-[#F4E2E0] px-2.5 py-0.5 rounded-full">
-                        ✨ Recommandé (Multi-moyens)
+                        ✨ Recommandé (Multi-opérateurs)
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
-                      <span className="text-[10px] font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md">
-                        🌊 Wave
-                      </span>
-                      <span className="text-[10px] font-semibold text-orange-800 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md">
-                        🍊 Orange Money
-                      </span>
-                      <span className="text-[10px] font-semibold text-purple-800 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
+                    <div className="flex items-center gap-2 pt-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 bg-white border border-[#E8D5D8] px-2 py-1 rounded-lg shadow-2xs">
+                        <img
+                          src="/images/payments/wave-logo.jpg"
+                          alt="Wave Sénégal"
+                          className="w-4 h-4 rounded-full object-cover shrink-0"
+                        />
+                        <span className="text-[11px] font-bold text-[#1E293B]">Wave</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-white border border-[#E8D5D8] px-2 py-1 rounded-lg shadow-2xs">
+                        <img
+                          src="/images/payments/orange-money-logo.jpg"
+                          alt="Orange Money"
+                          className="w-4 h-4 rounded-md object-contain shrink-0"
+                        />
+                        <span className="text-[11px] font-bold text-[#1E293B]">Orange Money</span>
+                      </div>
+                      <span className="text-[11px] font-semibold text-purple-900 bg-purple-50 border border-purple-200 px-2 py-1 rounded-lg">
                         🟣 Free Money
                       </span>
-                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                        💳 Carte Bancaire Visa / Mastercard
+                      <span className="text-[11px] font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
+                        💳 Carte Bancaire
                       </span>
                     </div>
                   </div>
@@ -546,7 +556,7 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed pt-1">
-                Règlement immédiat et sécurisé via la page hébergée PayTech. Vous pourrez choisir librement Wave, Orange Money, Free Money ou Carte Bancaire avec confirmation automatique instantanée.
+                Règlement immédiat et sécurisé via la passerelle PayTech. Vous pourrez choisir Wave, Orange Money, Free Money ou Carte Bancaire avec confirmation automatique instantanée.
               </p>
             </label>
 
@@ -555,18 +565,20 @@ export function InvoicePage() {
               onClick={() => setSelectedMethod('WAVE')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
                 selectedMethod === 'WAVE'
-                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm'
+                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
                   : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
               }`}
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-sky-500 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
-                    🌊
-                  </div>
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/images/payments/wave-logo.jpg"
+                    alt="Logo Wave"
+                    className="w-11 h-11 rounded-2xl object-cover shadow-xs shrink-0 border border-[#E0F2FE]"
+                  />
                   <div>
                     <p className="font-bold text-sm text-[#2C1E21]">Wave Sénégal</p>
-                    <span className="text-[10px] font-semibold text-sky-800 bg-sky-50 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full">
                       Paiement Mobile Direct
                     </span>
                   </div>
@@ -580,28 +592,66 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Validation directe via votre application Wave avec scan QR ou numéro de mobile.
+                Validation directe avec votre compte Wave par QR code ou notification mobile.
               </p>
             </label>
 
-            {/* 3. Cash on Delivery */}
+            {/* 3. Orange Money Direct */}
             <label
-              onClick={() => setSelectedMethod('CASH_ON_DELIVERY')}
+              onClick={() => setSelectedMethod('ORANGE_MONEY')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
-                selectedMethod === 'CASH_ON_DELIVERY'
-                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm'
+                selectedMethod === 'ORANGE_MONEY'
+                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
                   : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
               }`}
             >
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center p-1 shadow-xs shrink-0 border border-[#FED7AA]">
+                    <img
+                      src="/images/payments/orange-money-logo.jpg"
+                      alt="Logo Orange Money"
+                      className="w-full h-full object-contain rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-[#2C1E21]">Orange Money</p>
+                    <span className="text-[10px] font-semibold text-orange-800 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                      WebPay Sénégal
+                    </span>
+                  </div>
+                </div>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  checked={selectedMethod === 'ORANGE_MONEY'}
+                  onChange={() => setSelectedMethod('ORANGE_MONEY')}
+                  className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
+                />
+              </div>
+              <p className="text-[11px] text-[#7A6469] leading-relaxed">
+                Paiement via votre compte Orange Money Sénégal avec code de confirmation OTP.
+              </p>
+            </label>
+
+            {/* 4. Cash on Delivery */}
+            <label
+              onClick={() => setSelectedMethod('CASH_ON_DELIVERY')}
+              className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 md:col-span-2 ${
+                selectedMethod === 'CASH_ON_DELIVERY'
+                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
+                  : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
                     💵
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-[#2C1E21]">Paiement Livraison</p>
-                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      Espèces ou Wave au coursier
+                    <p className="font-bold text-sm text-[#2C1E21]">Paiement à la Livraison</p>
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      Espèces ou Wave auprès du coursier
                     </span>
                   </div>
                 </div>
@@ -614,7 +664,7 @@ export function InvoicePage() {
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Réglez en main propre lors de la réception de votre colis à Dakar.
+                Réglez en main propre à la réception de votre colis par notre coursier à Dakar.
               </p>
             </label>
           </div>

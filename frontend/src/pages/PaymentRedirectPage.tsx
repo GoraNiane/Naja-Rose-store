@@ -6,7 +6,6 @@ import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
 import {
   ShieldAlert,
-  Smartphone,
   CheckCircle2,
   XCircle,
   ArrowLeft,
@@ -85,8 +84,24 @@ export function PaymentRedirectPage() {
                 </div>
               )}
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-xs">
-              <Smartphone className="w-6 h-6" />
+            <div className="w-14 h-14 rounded-2xl bg-white p-1 flex items-center justify-center text-white shadow-md shrink-0">
+              {isWave ? (
+                <img
+                  src="/images/payments/wave-logo.jpg"
+                  alt="Wave Sénégal"
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              ) : isPayTech ? (
+                <div className="w-full h-full rounded-xl bg-[#8B3A4A] flex items-center justify-center text-xl">
+                  💳
+                </div>
+              ) : (
+                <img
+                  src="/images/payments/orange-money-logo.jpg"
+                  alt="Orange Money"
+                  className="w-full h-full object-contain rounded-xl"
+                />
+              )}
             </div>
           </div>
 
