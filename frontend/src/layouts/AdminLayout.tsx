@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
+  FileText,
   Users,
   LogOut,
   Layers,
@@ -28,8 +29,13 @@ const NAV_ITEMS = [
   },
   {
     path: '/admin/orders',
-    label: 'Commandes & Factures',
+    label: 'Commandes',
     icon: ShoppingCart,
+  },
+  {
+    path: '/admin/invoices',
+    label: 'Factures Clients',
+    icon: FileText,
   },
   {
     path: '/admin/products',

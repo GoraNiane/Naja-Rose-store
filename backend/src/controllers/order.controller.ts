@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { orderService } from '../services/order.service.js';
-import { paymentService } from '../services/payment.service.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { invoiceService } from '../services/invoice.service.js';
 
@@ -9,16 +8,14 @@ export class OrderController {
     try {
       const order = await orderService.create(req.body);
 
-      // Unified Payment initialization via PaymentService
-      const paymentData = await paymentService.initiatePayment(order.id);
-
+      // Order & Invoice created in Neon PostgreSQL, pending payment review by client
       return ApiResponse.created(
         res,
         {
           order,
-          payment: paymentData,
+          invoice: order.invoice,
         },
-        'Commande enregistrée avec succès'
+        'Commande enregistrée avec succès. Facture émise en attente de paiement.'
       );
     } catch (error) {
       return next(error);
@@ -76,7 +73,7 @@ export class OrderController {
 
   static async downloadInvoice(req: Request, res: Response, next: NextFunction) {
     try {
-      const idOrNumber = String(req.params.id);
+      const idOrNumber = String(req.params.id || req.params.orderNumber);
       let order = await orderService.getById(idOrNumber).catch(() => null);
       if (!order) {
         order = await orderService.getByOrderNumber(idOrNumber);
@@ -84,9 +81,9 @@ export class OrderController {
 
       const pdfBuffer = await invoiceService.generatePdfBuffer(order as any);
 
-      const filename = `Facture_${order.invoice?.invoiceNumber || order.orderNumber}.pdf`;
+      const filename = `facture-${order.invoice?.invoiceNumber || order.orderNumber}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       return res.send(pdfBuffer);
     } catch (error) {
       return next(error);

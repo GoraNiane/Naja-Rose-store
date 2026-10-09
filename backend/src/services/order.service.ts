@@ -82,15 +82,50 @@ export class OrderService {
       const deliveryFee = zone.price;
       const total = subtotal.add(deliveryFee);
       const currentYear = new Date().getFullYear();
-      const orderCountThisYear = await tx.order.count({
+
+      // Find highest sequential order number for current year
+      const lastOrder = await tx.order.findFirst({
         where: {
-          createdAt: {
-            gte: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+          orderNumber: {
+            startsWith: `CMD-${currentYear}-`,
           },
         },
+        orderBy: {
+          orderNumber: 'desc',
+        },
       });
-      const orderNumber = generateOrderNumber(orderCountThisYear + 1, currentYear);
-      const invoiceNumber = generateInvoiceNumber(orderCountThisYear + 1, currentYear);
+
+      let nextOrderSeq = 1;
+      if (lastOrder) {
+        const match = lastOrder.orderNumber.match(/(\d+)$/);
+        if (match) {
+          nextOrderSeq = parseInt(match[1], 10) + 1;
+        }
+      }
+
+      // Find highest sequential invoice number for current year
+      const lastInvoice = await tx.invoice.findFirst({
+        where: {
+          OR: [
+            { invoiceNumber: { startsWith: `NRS-${currentYear}-` } },
+            { invoiceNumber: { startsWith: `FAC-${currentYear}-` } },
+          ],
+        },
+        orderBy: {
+          invoiceNumber: 'desc',
+        },
+      });
+
+      let nextInvoiceSeq = nextOrderSeq;
+      if (lastInvoice) {
+        const match = lastInvoice.invoiceNumber.match(/(\d+)$/);
+        if (match) {
+          nextInvoiceSeq = Math.max(nextOrderSeq, parseInt(match[1], 10) + 1);
+        }
+      }
+
+      const orderNumber = generateOrderNumber(nextOrderSeq, currentYear);
+      const invoiceNumber = generateInvoiceNumber(nextInvoiceSeq, currentYear);
 
       // 4. Find or create Customer record
       const customerEmail =

@@ -97,7 +97,7 @@ async function runFinalSystemAudit() {
 
   assert('Format de commande standardisé CMD-2026-000001', orderNum1 === 'CMD-2026-000001');
   assert('Format de commande incrémental CMD-2026-000042', orderNum42 === 'CMD-2026-000042');
-  assert('Format de facture standardisé FAC-2026-000001', invoiceNum1 === 'FAC-2026-000001');
+  assert('Format de facture standardisé NRS-2026-000001', invoiceNum1 === 'NRS-2026-000001');
 
   // Order Status State Machine
   const orderStatuses = [
@@ -182,7 +182,7 @@ async function runFinalSystemAudit() {
   const mockOrderForInvoice: any = {
     id: 'ord_inv_test',
     orderNumber: 'CMD-2026-000001',
-    invoice: { invoiceNumber: 'FAC-2026-000001' },
+    invoice: { invoiceNumber: 'NRS-2026-000001' },
     createdAt: new Date(),
     customer: {
       firstName: 'Mariama',

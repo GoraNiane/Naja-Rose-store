@@ -1,4 +1,4 @@
-const CACHE_NAME = 'naja-rose-cache-v2';
+const CACHE_NAME = 'naja-rose-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -18,7 +18,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event: Clear Stale Caches & Claim Clients
+// Activate Event: Clear Stale Caches & Claim Clients Immediately
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -27,6 +27,7 @@ self.addEventListener('activate', (event) => {
         Promise.all(
           keys.map((key) => {
             if (key !== CACHE_NAME) {
+              console.log('[PWA SW] Removing old cache version:', key);
               return caches.delete(key);
             }
           })
@@ -38,8 +39,8 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event Strategy:
 // - API calls: Network-first (failover gracefully)
-// - Static assets (JS, CSS, Images, Fonts): Cache-first with stale-while-revalidate fallback
-// - Navigation: Network-first, fallback to /index.html if offline
+// - Navigation: Network-first, fallback to cached /index.html if offline
+// - Static assets (JS, CSS, Images, Fonts): Stale-while-revalidate
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -56,7 +57,7 @@ self.addEventListener('fetch', (event) => {
         return new Response(
           JSON.stringify({
             success: false,
-            error: 'Vous êtes actuellement hors-ligne. Veuillez vérifier votre connexion.',
+            error: 'Vous êtes actuellement hors-ligne. Veuillez vérifier votre connexion Internet.',
             offline: true,
           }),
           {

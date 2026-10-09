@@ -15,11 +15,14 @@ export interface PaymentStatusResponse {
 }
 
 export const paymentService = {
-  async initiatePayment(orderId: string, customRedirects?: { successUrl?: string; cancelUrl?: string }) {
-    const res: any = await api.post('/payments/initiate', {
-      orderId,
-      ...customRedirects,
-    });
+  async initiatePayment(params: {
+    orderId?: string;
+    orderNumber?: string;
+    paymentMethod?: 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+    successUrl?: string;
+    cancelUrl?: string;
+  }) {
+    const res: any = await api.post('/payments/initiate', params);
     return res.data;
   },
 

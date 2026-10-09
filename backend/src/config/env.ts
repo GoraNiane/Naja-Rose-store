@@ -14,10 +14,7 @@ const envSchema = z.object({
   
   DATABASE_URL: z
     .string()
-    .min(1, 'DATABASE_URL is required')
-    .default(
-      'postgresql://neondb_owner:npg_wRqNoy85PnAx@ep-bold-leaf-b8ub7on2-pooler.c-14.us-east-1.aws.neon.tech/neondb?sslmode=require'
-    ),
+    .min(1, 'DATABASE_URL is required'),
   
   JWT_SECRET: z
     .string()

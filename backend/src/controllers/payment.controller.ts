@@ -12,12 +12,14 @@ export class PaymentController {
    */
   static async initiate(req: Request, res: Response, next: NextFunction) {
     try {
-      const { orderId, successUrl, cancelUrl } = req.body;
-      if (!orderId) {
-        throw ApiError.badRequest('orderId requis');
+      const { orderId, orderNumber, paymentMethod, successUrl, cancelUrl } = req.body;
+      const ref = orderId || orderNumber;
+      if (!ref) {
+        throw ApiError.badRequest('orderId ou orderNumber requis');
       }
 
-      const result = await paymentService.initiatePayment(orderId, {
+      const result = await paymentService.initiatePayment(ref, {
+        paymentMethod,
         successUrl,
         cancelUrl,
       });

@@ -14,7 +14,7 @@ export interface CreateOrderPayload {
   phone: string;
   email?: string;
   notes?: string;
-  paymentMethod: 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+  paymentMethod?: 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
   items: {
     variantId: string;
     quantity: number;
@@ -37,8 +37,32 @@ export const orderService = {
     return res.data;
   },
 
+  async getInvoice(orderNumberOrId: string) {
+    const res: any = await api.get(`/orders/number/${orderNumberOrId}/invoice`).catch(() => {
+      return api.get(`/orders/${orderNumberOrId}/invoice`);
+    });
+    return res.data;
+  },
+
+  async getInvoiceByInvoiceNumber(invoiceNumber: string) {
+    const res: any = await api.get(`/invoices/${invoiceNumber}`);
+    return res.data;
+  },
+
   async getOrders(params?: { page?: number; limit?: number; status?: string; customerId?: string }) {
     const res: any = await api.get('/admin/orders', { params });
+    return res;
+  },
+
+  async getInvoices(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    paymentStatus?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const res: any = await api.get('/admin/invoices', { params });
     return res;
   },
 
@@ -47,7 +71,11 @@ export const orderService = {
     return res.data;
   },
 
+  getInvoicePdfUrl(idOrNumber: string) {
+    return `/api/orders/${idOrNumber}/invoice/pdf`;
+  },
+
   getInvoiceUrl(idOrNumber: string) {
-    return `/api/orders/${idOrNumber}/invoice`;
+    return `/api/orders/${idOrNumber}/invoice/pdf`;
   },
 };

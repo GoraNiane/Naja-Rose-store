@@ -5,7 +5,7 @@ export function generateOrderNumber(sequence = 1, year = new Date().getFullYear(
 
 export function generateInvoiceNumber(sequence = 1, year = new Date().getFullYear()): string {
   const padded = String(sequence).padStart(6, '0');
-  return `FAC-${year}-${padded}`;
+  return `NRS-${year}-${padded}`;
 }
 
 export function generateSKU(productCode: string, colorCode = 'DEF', sizeCode = 'STD'): string {

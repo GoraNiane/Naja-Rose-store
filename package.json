@@ -7,11 +7,11 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "postinstall": "prisma generate --schema=backend/prisma/schema.prisma",
-    "prisma:generate": "prisma generate --schema=backend/prisma/schema.prisma",
-    "prisma:push": "prisma db push --schema=backend/prisma/schema.prisma",
-    "prisma:seed": "tsx backend/prisma/seed.ts",
-    "build": "prisma generate --schema=backend/prisma/schema.prisma && npm --prefix backend run build && npm --prefix frontend run build",
+    "postinstall": "npm --prefix backend run prisma:generate",
+    "prisma:generate": "npm --prefix backend run prisma:generate",
+    "prisma:push": "npm --prefix backend run prisma:push",
+    "prisma:seed": "npm --prefix backend run prisma:seed",
+    "build": "npm --prefix backend run prisma:generate && npm --prefix backend run build && npm --prefix frontend run build",
     "start": "node backend/dist/server.js",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev"

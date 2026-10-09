@@ -64,11 +64,16 @@ router.delete('/delivery-zones/:id', DeliveryZoneController.delete);
 
 import { AnalyticsController } from '../controllers/analytics.controller.js';
 
+import { InvoiceController } from '../controllers/invoice.controller.js';
+
 // -----------------------------------------------------------------------------
-// 6. ORDERS MANAGEMENT
+// 6. ORDERS & INVOICES MANAGEMENT
 // -----------------------------------------------------------------------------
 router.get('/orders', OrderController.list);
 router.put('/orders/:id/status', validateRequest(updateOrderStatusSchema), OrderController.updateStatus);
+router.get('/invoices', InvoiceController.adminList);
+router.get('/invoices/:invoiceNumber', InvoiceController.getByInvoiceNumber);
+router.get('/invoices/:invoiceNumber/pdf', InvoiceController.downloadPdfByInvoiceNumber);
 
 // -----------------------------------------------------------------------------
 // 7. CUSTOMERS MANAGEMENT

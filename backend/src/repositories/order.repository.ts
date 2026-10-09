@@ -8,8 +8,19 @@ export class OrderRepository extends BaseRepository {
       include: {
         customer: true,
         deliveryZone: true,
-        items: true,
-        payments: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true,
+              },
+            },
+            variant: true,
+          },
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
         invoice: true,
       },
     });
@@ -21,8 +32,19 @@ export class OrderRepository extends BaseRepository {
       include: {
         customer: true,
         deliveryZone: true,
-        items: true,
-        payments: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true,
+              },
+            },
+            variant: true,
+          },
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
         invoice: true,
       },
     });
@@ -46,8 +68,20 @@ export class OrderRepository extends BaseRepository {
         include: {
           customer: true,
           deliveryZone: true,
-          items: true,
-          payments: true,
+          items: {
+            include: {
+              product: {
+                include: {
+                  images: true,
+                },
+              },
+              variant: true,
+            },
+          },
+          payments: {
+            orderBy: { createdAt: 'desc' },
+          },
+          invoice: true,
         },
       }),
       this.db.order.count({ where }),
@@ -72,8 +106,19 @@ export class OrderRepository extends BaseRepository {
       include: {
         customer: true,
         deliveryZone: true,
-        items: true,
-        payments: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true,
+              },
+            },
+            variant: true,
+          },
+        },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+        },
         invoice: true,
       },
     });

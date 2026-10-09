@@ -14,6 +14,7 @@ const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then((m
 const CartPage = lazy(() => import('./pages/CartPage').then((m) => ({ default: m.CartPage })));
 const CategoriesPage = lazy(() => import('./pages/CategoriesPage').then((m) => ({ default: m.CategoriesPage })));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const InvoicePage = lazy(() => import('./pages/InvoicePage').then((m) => ({ default: m.InvoicePage })));
 const PaymentRedirectPage = lazy(() => import('./pages/PaymentRedirectPage').then((m) => ({ default: m.PaymentRedirectPage })));
 const OrderSuccessPage = lazy(() => import('./pages/OrderSuccessPage').then((m) => ({ default: m.OrderSuccessPage })));
 const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage').then((m) => ({ default: m.OrderDetailPage })));
@@ -27,6 +28,7 @@ const ProductsPage = lazy(() => import('./pages/admin/ProductsPage').then((m) =>
 const ProductFormPage = lazy(() => import('./pages/admin/ProductFormPage').then((m) => ({ default: m.ProductFormPage })));
 const StockPage = lazy(() => import('./pages/admin/StockPage').then((m) => ({ default: m.StockPage })));
 const AdminOrdersPage = lazy(() => import('./pages/admin/OrdersPage').then((m) => ({ default: m.OrdersPage })));
+const AdminInvoicesPage = lazy(() => import('./pages/admin/InvoicesPage').then((m) => ({ default: m.InvoicesPage })));
 const AdminSalesPage = lazy(() => import('./pages/admin/SalesPage').then((m) => ({ default: m.SalesPage })));
 const AdminCustomersPage = lazy(() => import('./pages/admin/CustomersPage').then((m) => ({ default: m.CustomersPage })));
 
@@ -61,6 +63,13 @@ export function App() {
                 <Route path="cart" element={<CartPage />} />
                 <Route path="product/:slug" element={<ProductDetailPage />} />
                 <Route path="checkout" element={<CheckoutPage />} />
+                
+                {/* Official Invoice Consultation & Payment Step Routes */}
+                <Route path="commande/:orderNumber/facture" element={<InvoicePage />} />
+                <Route path="orders/:orderNumber/invoice" element={<InvoicePage />} />
+                <Route path="orders/:id/invoice" element={<InvoicePage />} />
+                <Route path="facture/:orderNumber" element={<InvoicePage />} />
+
                 <Route path="checkout/payment-redirect" element={<PaymentRedirectPage />} />
                 <Route path="checkout/success" element={<OrderSuccessPage />} />
                 <Route path="orders/:id" element={<OrderDetailPage />} />
@@ -77,6 +86,7 @@ export function App() {
                 <Route path="dashboard" element={<AdminDashboardPage />} />
                 <Route path="sales" element={<AdminSalesPage />} />
                 <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="invoices" element={<AdminInvoicesPage />} />
                 <Route path="products" element={<ProductsPage />} />
                 <Route path="products/new" element={<ProductFormPage />} />
                 <Route path="products/edit/:id" element={<ProductFormPage />} />
@@ -95,4 +105,3 @@ export function App() {
 }
 
 export default App;
-

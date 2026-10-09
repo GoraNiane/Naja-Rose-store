@@ -10,15 +10,18 @@ export class PaymentService {
    * Initiates payment for a given order using its selected PaymentMethod
    */
   async initiatePayment(
-    orderId: string,
+    orderIdOrNumber: string,
     options?: {
+      paymentMethod?: PaymentMethod;
       successUrl?: string;
       cancelUrl?: string;
       webhookUrl?: string;
     }
   ) {
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
+    let order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id: orderIdOrNumber }, { orderNumber: orderIdOrNumber }],
+      },
       include: {
         customer: true,
         payments: {
@@ -29,11 +32,26 @@ export class PaymentService {
     });
 
     if (!order) {
-      throw ApiError.notFound(`Commande non trouvée (ID: ${orderId})`);
+      throw ApiError.notFound(`Commande non trouvée (${orderIdOrNumber})`);
     }
 
     if (order.paymentStatus === PaymentStatus.PAID) {
       throw ApiError.badRequest('Cette commande a déjà été payée avec succès');
+    }
+
+    // If client specified a new payment method, update order
+    if (options?.paymentMethod && options.paymentMethod !== order.paymentMethod) {
+      order = await prisma.order.update({
+        where: { id: order.id },
+        data: { paymentMethod: options.paymentMethod },
+        include: {
+          customer: true,
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
     }
 
     const provider = PaymentFactory.getProvider(order.paymentMethod);
