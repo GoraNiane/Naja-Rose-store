@@ -5,11 +5,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useCartStore } from '../stores/cartStore';
+import { authStore } from '../stores/authStore';
 import { productService } from '../services/product.service';
 import { orderService } from '../services/order.service';
 import { formatCFA } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Spinner } from '../components/ui/Spinner';
 import {
   ShieldCheck,
   Truck,
@@ -17,7 +19,10 @@ import {
   ShoppingBag,
   ArrowLeft,
   Info,
+  AlertCircle,
 } from 'lucide-react';
+
+const SAVED_CUSTOMER_KEY = 'naja_saved_customer';
 
 const checkoutSchema = z.object({
   firstName: z.string().min(2, 'Le prénom est obligatoire (au moins 2 caractères)'),
@@ -49,6 +54,29 @@ export function CheckoutPage() {
     queryFn: () => productService.getDeliveryZones(),
   });
 
+  const getSavedCustomer = () => {
+    try {
+      const user = authStore.getUser();
+      if (user) {
+        return {
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          phone: user.phone || '',
+          email: user.email || '',
+        };
+      }
+      const raw = localStorage.getItem(SAVED_CUSTOMER_KEY);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
+  const saved = getSavedCustomer();
+
   const {
     register,
     handleSubmit,
@@ -57,11 +85,14 @@ export function CheckoutPage() {
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
-      city: 'Dakar',
-      deliveryZoneId: '',
-      email: '',
-      neighborhood: '',
-      landmark: '',
+      firstName: saved?.firstName || '',
+      lastName: saved?.lastName || '',
+      phone: saved?.phone || '',
+      email: saved?.email || '',
+      city: saved?.city || 'Dakar',
+      deliveryZoneId: saved?.deliveryZoneId || '',
+      neighborhood: saved?.neighborhood || '',
+      landmark: saved?.landmark || '',
       notes: '',
     },
   });
@@ -75,9 +106,15 @@ export function CheckoutPage() {
     mutationFn: orderService.createOrder,
     onSuccess: (data: any) => {
       clearCart();
-      const orderNumber = data.order?.orderNumber;
+      const orderNumber =
+        data?.order?.orderNumber ||
+        data?.orderNumber ||
+        data?.data?.order?.orderNumber ||
+        data?.data?.orderNumber ||
+        data?.order?.id ||
+        data?.id;
+
       if (orderNumber) {
-        // Redirect to the dedicated invoice consultation page
         navigate(`/commande/${orderNumber}/facture`);
       } else {
         navigate(`/orders`);
@@ -92,10 +129,27 @@ export function CheckoutPage() {
 
   const handleOrderSubmit = (data: CheckoutFormValues) => {
     if (items.length === 0) {
-      setSubmitError('Votre panier est vide. Veuillez ajouter des vêtements avant de commander.');
+      setSubmitError('Votre panier est vide. Veuillez ajouter des articles avant de commander.');
       return;
     }
     setSubmitError(null);
+
+    // Save customer for next purchase
+    try {
+      localStorage.setItem(
+        SAVED_CUSTOMER_KEY,
+        JSON.stringify({
+          firstName: data.firstName.trim(),
+          lastName: data.lastName.trim(),
+          phone: data.phone.trim(),
+          email: data.email?.trim() || '',
+          city: data.city || 'Dakar',
+          deliveryZoneId: data.deliveryZoneId,
+        })
+      );
+    } catch {
+      // ignore
+    }
 
     // Combine neighborhood, landmark, and notes into detailed indications if provided
     const detailedNotesParts: string[] = [];
@@ -130,6 +184,31 @@ export function CheckoutPage() {
         quantity: i.quantity,
       })),
     });
+  };
+
+  const handleOrderSubmitErrors = (formErrors: any) => {
+    const errorKeys = Object.keys(formErrors);
+    if (errorKeys.length > 0) {
+      const fieldNamesMap: Record<string, string> = {
+        firstName: 'Prénom',
+        lastName: 'Nom',
+        phone: 'Numéro de téléphone',
+        deliveryZoneId: 'Zone de livraison',
+        address: 'Adresse de livraison détaillée',
+        city: 'Ville',
+        email: 'Adresse email',
+      };
+
+      const missingLabels = errorKeys.map((k) => fieldNamesMap[k] || k).join(', ');
+      setSubmitError(`Veuillez renseigner ou corriger les champs suivants : ${missingLabels}.`);
+
+      const firstKey = errorKeys[0];
+      const errorElement = document.querySelector(`[name="${firstKey}"]`);
+      if (errorElement) {
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (errorElement as HTMLElement).focus();
+      }
+    }
   };
 
   if (items.length === 0) {
@@ -198,7 +277,7 @@ export function CheckoutPage() {
       )}
 
       {/* Main Form Grid */}
-      <form onSubmit={handleSubmit(handleOrderSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10">
+      <form onSubmit={handleSubmit(handleOrderSubmit, handleOrderSubmitErrors)} className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10">
         {/* Left Column: Delivery and Contact Information */}
         <div className="lg:col-span-7 space-y-6">
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#F2E5E2] shadow-sm space-y-6">
@@ -392,6 +471,17 @@ export function CheckoutPage() {
               </div>
             </div>
 
+            {/* Errors alert right above submit button */}
+            {submitError && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 flex items-start gap-2 shadow-xs">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold">Informations requises :</p>
+                  <p className="font-normal text-[11px] leading-relaxed">{submitError}</p>
+                </div>
+              </div>
+            )}
+
             {/* Submit Action */}
             <Button
               type="submit"
@@ -399,10 +489,16 @@ export function CheckoutPage() {
               size="lg"
               disabled={createOrderMutation.isPending}
               className="w-full py-4 rounded-2xl font-bold text-sm shadow-md hover:shadow-lg transition-all"
-              rightIcon={<ArrowRight className="w-4 h-4" />}
+              rightIcon={
+                createOrderMutation.isPending ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )
+              }
             >
               {createOrderMutation.isPending ? (
-                <span>Enregistrement de la commande...</span>
+                <span>Création de votre facture...</span>
               ) : (
                 <span>Confirmer ma commande ({formatCFA(total)})</span>
               )}
