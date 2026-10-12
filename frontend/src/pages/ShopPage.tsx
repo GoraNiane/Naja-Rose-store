@@ -660,7 +660,7 @@ export function ShopPage() {
                 className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3.5 sm:gap-6"
               >
                 {activeProducts.map((product) => (
-                  <StaggerItem key={product.id} direction="scale">
+                  <StaggerItem key={product.id} direction="scale" className="h-full flex flex-col">
                     <ProductCard product={product as any} />
                   </StaggerItem>
                 ))}

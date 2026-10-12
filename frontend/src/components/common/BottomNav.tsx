@@ -46,7 +46,7 @@ export function BottomNav({ onOpenCart }: BottomNavProps) {
 
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-[#F4E2E0] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom,0px)]">
-      <nav className="flex items-center justify-around h-16 px-2 max-w-md mx-auto">
+      <nav className="grid grid-cols-5 h-16 px-1 max-w-md mx-auto items-center">
         {navItems.map((item) => {
           const isActive = item.exact
             ? location.pathname === item.path
@@ -63,13 +63,13 @@ export function BottomNav({ onOpenCart }: BottomNavProps) {
                 href={item.path}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center flex-1 py-1 text-[#644D52] hover:text-[#25D366] transition-colors relative"
+                className="flex flex-col items-center justify-center h-full w-full py-1 text-[#644D52] hover:text-[#25D366] transition-colors relative"
               >
-                <div className="relative p-1">
+                <div className="relative w-7 h-7 flex items-center justify-center">
                   <Icon className="w-5 h-5 text-[#25D366]" />
-                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
+                  <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
                 </div>
-                <span className="text-[10px] font-medium tracking-tight mt-0.5">{item.label}</span>
+                <span className="text-[10px] font-medium tracking-tight mt-0.5 leading-tight text-center truncate max-w-full">{item.label}</span>
               </a>
             );
           }
@@ -80,19 +80,19 @@ export function BottomNav({ onOpenCart }: BottomNavProps) {
                 key={item.label}
                 type="button"
                 onClick={onOpenCart}
-                className={`flex flex-col items-center justify-center flex-1 py-1 transition-all relative ${
+                className={`flex flex-col items-center justify-center h-full w-full py-1 transition-all relative ${
                   isActive ? 'text-[#8B3A4A]' : 'text-[#644D52] hover:text-[#8B3A4A]'
                 }`}
               >
-                <div className="relative p-1">
+                <div className="relative w-7 h-7 flex items-center justify-center">
                   <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
                   {item.badge > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#E7A8B4] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-[#E7A8B4] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
                       {item.badge}
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] tracking-tight mt-0.5 ${isActive ? 'font-bold' : 'font-medium'}`}>
+                <span className={`text-[10px] tracking-tight mt-0.5 leading-tight text-center truncate max-w-full ${isActive ? 'font-bold' : 'font-medium'}`}>
                   {item.label}
                 </span>
               </button>
@@ -103,17 +103,17 @@ export function BottomNav({ onOpenCart }: BottomNavProps) {
             <Link
               key={item.label}
               to={item.path}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all relative ${
+              className={`flex flex-col items-center justify-center h-full w-full py-1 transition-all relative ${
                 isActive ? 'text-[#8B3A4A]' : 'text-[#644D52] hover:text-[#8B3A4A]'
               }`}
             >
-              <div className="relative p-1">
+              <div className="relative w-7 h-7 flex items-center justify-center">
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
                 {isActive && (
                   <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#8B3A4A]" />
                 )}
               </div>
-              <span className={`text-[10px] tracking-tight mt-0.5 ${isActive ? 'font-bold text-[#8B3A4A]' : 'font-medium'}`}>
+              <span className={`text-[10px] tracking-tight mt-0.5 leading-tight text-center truncate max-w-full ${isActive ? 'font-bold text-[#8B3A4A]' : 'font-medium'}`}>
                 {item.label}
               </span>
             </Link>

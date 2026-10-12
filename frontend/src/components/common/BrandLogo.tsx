@@ -22,12 +22,6 @@ export function BrandLogo({ className = '', size = 'md', isLight = false }: Bran
     lg: 'text-3xl sm:text-4xl lg:text-5xl',
   };
 
-  const badgeSizes = {
-    sm: 'text-[8px] px-2 py-0.5',
-    md: 'text-[9px] sm:text-[10px] px-2.5 sm:px-3 py-0.5',
-    lg: 'text-[11px] sm:text-[12px] px-3.5 py-1',
-  };
-
   return (
     <motion.div
       onClick={handleClick}
@@ -41,7 +35,7 @@ export function BrandLogo({ className = '', size = 'md', isLight = false }: Bran
           : { scale: 1, opacity: 1 }
       }
       transition={{ duration: 0.35, ease: 'easeInOut' }}
-      className={`inline-flex flex-col items-center group cursor-pointer select-none touch-manipulation transition-transform active:scale-[0.98] ${className}`}
+      className={`inline-flex items-center justify-center group cursor-pointer select-none touch-manipulation transition-transform active:scale-[0.98] ${className}`}
       title="Naja Rose Store"
     >
       <span
@@ -52,17 +46,6 @@ export function BrandLogo({ className = '', size = 'md', isLight = false }: Bran
       >
         Naja Rose Store
       </span>
-      <div className="mt-1">
-        <span
-          className={`inline-block ${badgeSizes[size]} font-medium rounded-full tracking-wide shadow-xs uppercase ${
-            isLight
-              ? 'bg-white/20 text-white backdrop-blur-xs'
-              : 'bg-[#382B2F] text-white'
-          }`}
-        >
-          Elegance Style Garanties
-        </span>
-      </div>
     </motion.div>
   );
 }

@@ -461,7 +461,7 @@ export function HomePage() {
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4.5"
             >
               {popularList.map((product: any) => (
-                <StaggerItem key={product.id} direction="scale">
+                <StaggerItem key={product.id} direction="scale" className="h-full flex flex-col">
                   <ProductCard product={product} />
                 </StaggerItem>
               ))}

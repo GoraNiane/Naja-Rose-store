@@ -81,17 +81,17 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <div className="group relative flex flex-col rounded-[22px] sm:rounded-[26px] bg-white border border-[#F2E5E2] shadow-2xs hover:shadow-luxury-hover hover:-translate-y-1 transition-all duration-300 overflow-hidden">
-      {/* Image Container with Soft Pastel Tint Background */}
-      <div className="relative aspect-[4/5] w-full bg-[#FAF0EE] rounded-t-[22px] sm:rounded-t-[26px] overflow-hidden flex items-center justify-center p-3 sm:p-4">
+    <div className="group relative h-full flex flex-col rounded-[22px] sm:rounded-[26px] bg-white border border-[#F2E5E2] shadow-2xs hover:shadow-luxury-hover hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+      {/* Uniform Aspect Ratio Image Container */}
+      <div className="relative aspect-[4/5] w-full bg-[#FAF0EE] rounded-t-[22px] sm:rounded-t-[26px] overflow-hidden flex items-center justify-center shrink-0">
         <Link
           to={`/product/${product.slug}`}
-          className="w-full h-full flex items-center justify-center overflow-hidden"
+          className="w-full h-full block overflow-hidden"
         >
           <img
             src={primaryImage}
             alt={product.name}
-            className="w-full h-full object-contain sm:object-cover group-hover:scale-105 transition-transform duration-300 ease-out transform-gpu"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out transform-gpu"
             loading="lazy"
             decoding="async"
           />
@@ -122,18 +122,18 @@ export function ProductCard({ product }: { product: Product }) {
 
       {/* Product Info Section */}
       <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between space-y-2 bg-white">
-        <div className="space-y-1">
-          {/* Title in Elegant Chic Typography */}
+        <div className="space-y-1 flex-1 flex flex-col">
+          {/* Title in Elegant Chic Typography - Uniform 2-line height */}
           <Link
             to={`/product/${product.slug}`}
-            className="font-serif text-xs sm:text-sm text-[#2C1E21] hover:text-[#8B3A4A] transition-colors line-clamp-1 block leading-snug"
+            className="font-serif text-xs sm:text-sm text-[#2C1E21] hover:text-[#8B3A4A] transition-colors line-clamp-2 min-h-[2.25rem] sm:min-h-[2.5rem] block leading-snug"
             style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
           >
             {product.name}
           </Link>
 
           {/* Price with strikethrough if discounted */}
-          <div className="flex items-baseline gap-1.5 pt-0.5 flex-wrap">
+          <div className="flex items-baseline gap-1.5 pt-0.5 flex-wrap min-h-[1.5rem]">
             <span className="font-bold text-xs sm:text-sm md:text-base text-[#1A1816]">
               {formatCFA(product.price)}
             </span>
@@ -145,8 +145,8 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         </div>
 
-        {/* Variants Indicators Row: Color stripes or Size chips (Faithfully reproduced from screenshot) */}
-        <div className="pt-1 flex items-center justify-between min-h-[26px]">
+        {/* Variants Indicators Row: Color stripes or Size chips (pinned to bottom) */}
+        <div className="pt-2 mt-auto flex items-center justify-between min-h-[28px] border-t border-[#FAF5F4]">
           {/* Color swatches vertical bars if available */}
           {uniqueColors.length > 0 ? (
             <div className="flex items-center gap-1 overflow-x-auto py-0.5 max-w-[75%] no-scrollbar">

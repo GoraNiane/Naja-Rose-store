@@ -12,9 +12,9 @@ export function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <StaggerContainer 
             staggerDelay={0.1}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center sm:text-left"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-sm md:max-w-none mx-auto"
           >
-            <StaggerItem direction="up" className="flex items-center gap-4 justify-center sm:justify-start">
+            <StaggerItem direction="up" className="flex items-center gap-4 justify-start text-left">
               <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0 shadow-2xs">
                 <Truck className="w-6 h-6" />
               </div>
@@ -24,7 +24,7 @@ export function Footer() {
               </div>
             </StaggerItem>
 
-            <StaggerItem direction="up" className="flex items-center gap-4 justify-center sm:justify-start">
+            <StaggerItem direction="up" className="flex items-center gap-4 justify-start text-left">
               <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0 shadow-2xs">
                 <ShieldCheck className="w-6 h-6" />
               </div>
@@ -34,12 +34,12 @@ export function Footer() {
               </div>
             </StaggerItem>
 
-            <StaggerItem direction="up" className="flex items-center gap-4 justify-center sm:justify-start">
+            <StaggerItem direction="up" className="flex items-center gap-4 justify-start text-left">
               <div className="w-12 h-12 rounded-2xl bg-[#382B2F] text-[#E7A8B4] flex items-center justify-center flex-shrink-0 shadow-2xs">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="font-semibold text-white text-sm">Elegance Style Garanties</h4>
+                <h4 className="font-semibold text-white text-sm">Qualité & Finitions Soignées</h4>
                 <p className="text-xs text-[#A0888E]">Des vêtements qui révèlent votre beauté</p>
               </div>
             </StaggerItem>
@@ -188,7 +188,7 @@ export function Footer() {
           </div>
 
           <div className="flex items-center gap-4 text-center sm:text-right">
-            <p>© {new Date().getFullYear()} Naja Rose Store Sénégal. Elegance Style Garanties.</p>
+            <p>© {new Date().getFullYear()} Naja Rose Store Sénégal. Tous droits réservés.</p>
             <p className="flex items-center gap-1">
               Fait avec <Heart className="w-3.5 h-3.5 text-[#E7A8B4] fill-[#E7A8B4]" /> à Dakar
             </p>
