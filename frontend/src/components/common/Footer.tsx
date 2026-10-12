@@ -30,7 +30,7 @@ export function Footer() {
               </div>
               <div>
                 <h4 className="font-semibold text-white text-sm">Paiement 100% Sécurisé</h4>
-                <p className="text-xs text-[#A0888E]">Wave, Orange Money ou Paiement à la livraison</p>
+                <p className="text-xs text-[#A0888E]">Wave ou Orange Money</p>
               </div>
             </StaggerItem>
 
@@ -179,12 +179,6 @@ export function Footer() {
               />
               <span className="text-[10px] font-bold text-[#1E293B]">Orange Money</span>
             </div>
-            <span className="bg-[#382B2F] text-[#E7A8B4] border border-[#523A40] text-[10px] font-semibold px-2 py-0.5 rounded-md">
-              ⚡ UnitechPay
-            </span>
-            <span className="bg-[#382B2F] text-[#E7A8B4] border border-[#523A40] text-[10px] font-semibold px-2 py-0.5 rounded-md">
-              💵 Livraison
-            </span>
           </div>
 
           <div className="flex items-center gap-4 text-center sm:text-right">

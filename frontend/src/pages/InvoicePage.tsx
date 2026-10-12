@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { orderService } from '../services/order.service';
 import { paymentService } from '../services/payment.service';
 import { formatCFA, formatDate } from '../lib/utils';
@@ -34,12 +34,11 @@ export function InvoicePage() {
   const { orderNumber, id } = useParams<{ orderNumber?: string; id?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const ref = orderNumber || id || searchParams.get('orderNumber') || '';
   const paymentParam = searchParams.get('payment'); // 'cancelled' | 'failed'
 
-  type SelectedPaymentMethod = 'UNITECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+  type SelectedPaymentMethod = 'WAVE' | 'ORANGE_MONEY';
   const [selectedMethod, setSelectedMethod] = useState<SelectedPaymentMethod>('WAVE');
   const [waveOpened, setWaveOpened] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(
@@ -47,7 +46,6 @@ export function InvoicePage() {
       ? 'La tentative de paiement a été interrompue ou annulée sur la passerelle. Vous pouvez réessayer ci-dessous ou choisir un autre mode de règlement.'
       : null
   );
-  const [codConfirmed, setCodConfirmed] = useState(false);
 
   // Fetch Order and Invoice Data
   const {
@@ -94,11 +92,6 @@ export function InvoicePage() {
       });
     },
     onSuccess: (paymentData: any) => {
-      if (selectedMethod === 'CASH_ON_DELIVERY') {
-        setCodConfirmed(true);
-        queryClient.invalidateQueries({ queryKey: ['order-invoice', ref] });
-        return;
-      }
 
       const redirectUrl =
         paymentData?.paymentUrl ||
@@ -276,7 +269,7 @@ export function InvoicePage() {
         </div>
 
         <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0 flex-wrap sm:flex-nowrap">
-          {!isPaid && !codConfirmed && !isReviewRequired && (
+          {!isPaid && !isReviewRequired && (
             <button
               type="button"
               onClick={handleScrollToPayment}
@@ -437,18 +430,6 @@ export function InvoicePage() {
           <div>
             <p className="font-bold">Information de paiement</p>
             <p>{paymentError}</p>
-          </div>
-        </div>
-      )}
-
-      {codConfirmed && (
-        <div className="p-5 rounded-3xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start sm:items-center gap-3.5 no-print">
-          <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-          <div className="flex-1">
-            <p className="font-bold text-sm text-emerald-950">Option Paiement à la Livraison confirmée !</p>
-            <p className="mt-0.5 text-emerald-800">
-              Votre commande <strong>{order.orderNumber}</strong> est en cours de traitement par notre atelier. Vous règlerez le montant de <strong>{formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)}</strong> en espèces ou par Wave auprès du livreur lors de la livraison.
-            </p>
           </div>
         </div>
       )}
@@ -769,7 +750,7 @@ export function InvoicePage() {
       </div>
 
       {/* Interactive Payment Choice Section for remaining balance */}
-      {!isPaid && !codConfirmed && !isReviewRequired && (
+      {!isPaid && !isReviewRequired && (
         <div id="payment-section" className="bg-white rounded-3xl border-2 border-[#8B3A4A]/30 p-6 sm:p-8 space-y-6 shadow-md no-print">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#F4E2E0] pb-4">
             <div>
@@ -879,101 +860,6 @@ export function InvoicePage() {
                 Validation directe et 100% sécurisée via l'application officielle <strong>Orange Max it</strong>.
               </p>
             </label>
-
-            {/* 3. UnitechPay Unified Gateway (Wave, OM, QR) */}
-            <label
-              onClick={() => setSelectedMethod('UNITECH')}
-              className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 md:col-span-2 ${
-                selectedMethod === 'UNITECH'
-                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
-                  : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-[#8B3A4A] text-white flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
-                    ⚡
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-bold text-base text-[#2C1E21]">
-                        UnitechPay (Passerelle Mobile Sécurisée)
-                      </p>
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                        🔒 Wave & Orange Money
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 pt-2 flex-wrap">
-                      <div className="flex items-center gap-1.5 bg-white border border-[#E8CFCF] px-2.5 py-0.5 rounded shadow-2xs">
-                        <img
-                          src="/images/payments/wave-logo.jpg"
-                          alt="Wave"
-                          className="w-3.5 h-3.5 rounded-full object-cover"
-                        />
-                        <span className="text-[11px] font-bold text-[#1E293B]">Wave</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-white border border-[#E8CFCF] px-2.5 py-0.5 rounded shadow-2xs">
-                        <img
-                          src="/images/payments/orange-money-logo.jpg"
-                          alt="OM"
-                          className="w-3.5 h-3.5 rounded object-contain"
-                        />
-                        <span className="text-[11px] font-bold text-[#1E293B]">Orange Money</span>
-                      </div>
-                      <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                        Confirmation Instantanée
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  checked={selectedMethod === 'UNITECH'}
-                  onChange={() => setSelectedMethod('UNITECH')}
-                  className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
-                />
-              </div>
-              <p className="text-[11px] text-[#7A6469] leading-relaxed pt-1">
-                Paiement instantané et 100% automatisé via la passerelle officielle <strong>UnitechPay Sénégal</strong> vers NAJA ROSE STORE.
-              </p>
-            </label>
-
-            {/* 4. Cash on Delivery (only on initial unpaid state) */}
-            {!isPartiallyPaid && (
-              <label
-                onClick={() => setSelectedMethod('CASH_ON_DELIVERY')}
-                className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 md:col-span-2 ${
-                  selectedMethod === 'CASH_ON_DELIVERY'
-                    ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
-                    : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
-                      💵
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-[#2C1E21]">Paiement à la Livraison</p>
-                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        Espèces ou Wave auprès du coursier
-                      </span>
-                    </div>
-                  </div>
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    checked={selectedMethod === 'CASH_ON_DELIVERY'}
-                    onChange={() => setSelectedMethod('CASH_ON_DELIVERY')}
-                    className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
-                  />
-                </div>
-                <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                  Réglez en main propre à la réception de votre colis par notre coursier à Dakar (en espèces ou par Wave).
-                </p>
-              </label>
-            )}
           </div>
 
           {/* Action Button */}
@@ -1008,18 +894,14 @@ export function InvoicePage() {
                 variant="gold"
                 size="lg"
                 disabled={initiatePaymentMutation.isPending}
-                onClick={() => initiatePaymentMutation.mutate(selectedMethod)}
+                onClick={() => initiatePaymentMutation.mutate('ORANGE_MONEY')}
                 className="w-full sm:w-auto px-8 py-4 text-sm font-bold shadow-md hover:shadow-lg transition-all"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
                 {initiatePaymentMutation.isPending ? (
                   <span>Connexion sécurisée en cours...</span>
-                ) : selectedMethod === 'UNITECH' ? (
-                  <span>Payer via UnitechPay ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
-                ) : selectedMethod === 'ORANGE_MONEY' ? (
-                  <span>Payer avec Orange Money ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
                 ) : (
-                  <span>Confirmer le Paiement à la Livraison ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
+                  <span>Payer avec Orange Money ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
                 )}
               </Button>
             )}
@@ -1062,15 +944,15 @@ export function InvoicePage() {
         </div>
       )}
 
-      {/* Post-Payment or COD Status Confirmation Banner */}
-      {(isPaid || codConfirmed) && (
+      {/* Post-Payment Status Confirmation Banner */}
+      {isPaid && (
         <div className="bg-[#FAF5F4] rounded-3xl border border-[#F4E2E0] p-6 text-center space-y-4 no-print">
           <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div className="space-y-1">
             <h3 className="font-serif font-bold text-lg text-[#2C1E21]">
-              {isPaid ? 'Paiement Confirmé avec Succès !' : 'Commande Enregistrée avec Succès !'}
+              Paiement Confirmé avec Succès !
             </h3>
             <p className="text-xs text-[#7A6469] max-w-lg mx-auto">
               Votre commande <strong>{order.orderNumber}</strong> est validée. Vous pouvez télécharger votre facture PDF et suivre l'acheminement de votre colis.

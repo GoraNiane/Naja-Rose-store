@@ -31,12 +31,4 @@ export const PAYMENT_METHODS = [
     badge: 'Populaire',
     badgeColor: 'bg-orange-100 text-orange-800',
   },
-  {
-    id: 'CASH_ON_DELIVERY',
-    name: 'Paiement à la Livraison',
-    description: 'Payez en espèces ou Wave lors de la remise en main propre à Dakar',
-    icon: '💵',
-    badge: 'Dakar & Régions',
-    badgeColor: 'bg-rose-100 text-rose-800',
-  },
 ];

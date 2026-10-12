@@ -218,15 +218,15 @@ export function CartPage() {
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#A0888E] block text-center">
                 Paiements Sécurisés au Sénégal
               </span>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 gap-3 text-center">
                 {PAYMENT_METHODS.map((pm) => (
                   <div
                     key={pm.id}
-                    className="p-2 rounded-xl bg-[#FAF9F8] border border-[#F2E5E2] flex flex-col items-center justify-center text-center"
+                    className="p-2.5 rounded-xl bg-[#FAF9F8] border border-[#F2E5E2] flex flex-col items-center justify-center text-center shadow-2xs"
                   >
-                    <span className="text-base">{pm.icon}</span>
-                    <span className="text-[9px] sm:text-[10px] font-bold text-[#382B2F] mt-1 leading-tight">
-                      {pm.name.split(' ')[0]}
+                    <span className="text-lg">{pm.icon}</span>
+                    <span className="text-[10px] sm:text-xs font-bold text-[#382B2F] mt-1 leading-tight">
+                      {pm.name}
                     </span>
                   </div>
                 ))}

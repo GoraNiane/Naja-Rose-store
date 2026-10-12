@@ -20,7 +20,7 @@ export function PaymentRedirectPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const method = (searchParams.get('method') || 'WAVE') as 'UNITECH' | 'WAVE' | 'ORANGE_MONEY';
+  const method = (searchParams.get('method') || 'WAVE') as 'WAVE' | 'ORANGE_MONEY';
   const orderId = searchParams.get('orderId') || '';
   const orderNumber = searchParams.get('orderNumber') || '';
   const amount = Number(searchParams.get('amount') || 0);

@@ -522,29 +522,21 @@ export function CheckoutPage() {
                 <span>Génération automatique de facture sans prélèvement immédiat</span>
               </div>
               <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
-                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
+                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2.5 py-1 rounded-lg border border-[#F4E2E0] shadow-2xs">
                   <img
                     src="/images/payments/wave-logo.jpg"
                     alt="Wave"
                     className="w-4 h-4 rounded-full object-cover shadow-2xs"
                   />
-                  <span className="text-[10px] font-bold text-[#2C1E21]">Wave</span>
+                  <span className="text-[10px] font-bold text-[#2C1E21]">Wave Sénégal</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
+                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2.5 py-1 rounded-lg border border-[#F4E2E0] shadow-2xs">
                   <img
                     src="/images/payments/orange-money-logo.jpg"
                     alt="Orange Money"
                     className="w-4 h-4 rounded object-contain shadow-2xs"
                   />
                   <span className="text-[10px] font-bold text-[#2C1E21]">Orange Money</span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span className="text-[10px] font-bold text-[#8B3A4A]">UnitechPay SN</span>
-                </div>
-                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
-                  <span className="text-xs">💵</span>
-                  <span className="text-[10px] font-bold text-[#2C1E21]">Paiement Livraison</span>
                 </div>
               </div>
             </div>
