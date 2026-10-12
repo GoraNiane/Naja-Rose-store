@@ -304,6 +304,8 @@ async function main() {
     },
   ];
 
+  const allCreatedProducts: { product: any; variants: any[] }[] = [];
+
   for (const p of productsData) {
     const product = await prisma.product.create({
       data: {
@@ -331,6 +333,7 @@ async function main() {
     }
 
     // Create Variants (Sizes S, M, L)
+    const productVariants: any[] = [];
     const selectedSizes = sizes.slice(1, 4); // S, M, L
     for (let s = 0; s < selectedSizes.length; s++) {
       const color = colors[s % colors.length];
@@ -350,6 +353,8 @@ async function main() {
         },
       });
 
+      productVariants.push(variant);
+
       await prisma.stockMovement.create({
         data: {
           variantId: variant.id,
@@ -360,6 +365,8 @@ async function main() {
         },
       });
     }
+
+    allCreatedProducts.push({ product, variants: productVariants });
   }
 
   console.log('👗 Created 8 Products with Variants, Stock & Images.');
@@ -377,12 +384,16 @@ async function main() {
       subtotal: 57000,
       deliveryFee: 2000,
       total: 59000,
+      amountPaid: 59000,
+      remainingBalance: 0,
       paymentMethod: PaymentMethod.WAVE,
       paymentStatus: PaymentStatus.PAID,
       status: OrderStatus.CONFIRMED,
       items: {
         create: [
           {
+            productId: allCreatedProducts[0]?.product.id,
+            variantId: allCreatedProducts[0]?.variants[1]?.id,
             productName: 'Chemise oversize',
             colorName: 'Rose Poudré',
             sizeName: 'M',
@@ -391,6 +402,8 @@ async function main() {
             total: 25000,
           },
           {
+            productId: allCreatedProducts[1]?.product.id,
+            variantId: allCreatedProducts[1]?.variants[1]?.id,
             productName: 'Robe élégante',
             colorName: 'Noir Élégance',
             sizeName: 'M',
@@ -414,7 +427,7 @@ async function main() {
       },
       invoice: {
         create: {
-          invoiceNumber: 'FAC-2026-000001',
+          invoiceNumber: 'NRS-2026-000001',
         },
       },
     },
