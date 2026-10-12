@@ -253,8 +253,8 @@ export function OrdersPage() {
                       {/* Moyen de Paiement */}
                       <td className="py-4 px-5">
                         <p className="font-semibold text-slate-800 text-[11px]">
-                          {order.paymentMethod === 'PAYTECH'
-                            ? 'Carte Bancaire'
+                          {order.paymentMethod === 'UNITECH'
+                            ? 'UnitechPay'
                             : order.paymentMethod === 'WAVE'
                             ? 'Wave Sénégal'
                             : order.paymentMethod === 'ORANGE_MONEY'

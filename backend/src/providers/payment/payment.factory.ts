@@ -1,6 +1,9 @@
+
+
+
 import { PaymentMethod } from '@prisma/client';
 import { PaymentProvider } from './payment.interface.js';
-import { paytechProvider } from './paytech.provider.js';
+import { unitechProvider } from './unitech.provider.js';
 import { waveProvider } from './wave.provider.js';
 import { orangeMoneyProvider } from './orangeMoney.provider.js';
 import { cashOnDeliveryProvider } from './cashOnDelivery.provider.js';
@@ -8,7 +11,7 @@ import { ApiError } from '../../utils/apiError.js';
 
 export class PaymentFactory {
   private static providers: Record<PaymentMethod, PaymentProvider> = {
-    [PaymentMethod.PAYTECH]: paytechProvider,
+    [PaymentMethod.UNITECH]: unitechProvider,
     [PaymentMethod.WAVE]: waveProvider,
     [PaymentMethod.ORANGE_MONEY]: orangeMoneyProvider,
     [PaymentMethod.CASH_ON_DELIVERY]: cashOnDeliveryProvider,

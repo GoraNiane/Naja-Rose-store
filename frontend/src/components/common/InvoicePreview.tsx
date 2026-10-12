@@ -80,10 +80,10 @@ export function InvoicePreview({
 
   const getPaymentMethodDetails = (method: string) => {
     switch (method) {
-      case 'PAYTECH':
+      case 'UNITECH':
         return {
-          name: 'Carte Bancaire (Visa / Mastercard)',
-          badge: 'Paiement Sécurisé 3DS',
+          name: 'UnitechPay Sénégal (Wave & OM)',
+          badge: 'Unitech 100% Sécurisé',
           color: 'bg-[#FAF2F0] text-[#8B3A4A] border-[#F4E2E0]',
         };
       case 'WAVE':
@@ -300,7 +300,7 @@ export function InvoicePreview({
             <p className="text-xs text-[#7A6469]">
               {invoice.paymentMethod === 'CASH_ON_DELIVERY'
                 ? 'Règlement du montant total à la remise du colis par notre livreur à Dakar.'
-                : 'Paiement mobile instantané et sécurisé via application Wave, Orange Money ou PayTech.'}
+                : 'Paiement mobile instantané et sécurisé via application Wave ou Orange Money.'}
             </p>
             <div className="pt-1 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />

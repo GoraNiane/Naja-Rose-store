@@ -201,8 +201,8 @@ export function InvoicesPage() {
                       {/* Moyen de Paiement */}
                       <td className="py-4 px-5">
                         <span className="font-medium text-slate-800 text-[11px] block">
-                          {order?.paymentMethod === 'PAYTECH'
-                            ? 'Carte Bancaire'
+                          {order?.paymentMethod === 'UNITECH'
+                            ? 'UnitechPay'
                             : order?.paymentMethod === 'WAVE'
                             ? 'Wave Sénégal'
                             : order?.paymentMethod === 'ORANGE_MONEY'

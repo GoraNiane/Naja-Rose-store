@@ -368,7 +368,12 @@ export function OrderDetailPage() {
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
               <span className="text-slate-500">Moyen de règlement :</span>
               <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                {order.paymentMethod === 'WAVE' ? (
+                {order.paymentMethod === 'UNITECH' ? (
+                  <>
+                    <span className="text-xs">⚡</span>
+                    <span>UnitechPay (Wave & Orange Money)</span>
+                  </>
+                ) : order.paymentMethod === 'WAVE' ? (
                   <>
                     <img
                       src="/images/payments/wave-logo.jpg"
@@ -385,11 +390,6 @@ export function OrderDetailPage() {
                       className="w-4 h-4 rounded object-contain shadow-2xs"
                     />
                     <span>Orange Money</span>
-                  </>
-                ) : order.paymentMethod === 'PAYTECH' ? (
-                  <>
-                    <span className="text-xs">💳</span>
-                    <span>PayTech Sénégal</span>
                   </>
                 ) : (
                   <span>💵 Paiement à la livraison</span>

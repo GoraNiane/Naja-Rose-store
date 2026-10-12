@@ -1,10 +1,12 @@
-const CACHE_NAME = 'naja-rose-cache-v3';
+const CACHE_NAME = 'naja-rose-cache-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/logo.svg',
   '/manifest.webmanifest',
   '/images/hero-boutique.jpg',
+  '/images/payments/wave-logo.jpg',
+  '/images/payments/orange-money-logo.jpg',
 ];
 
 // Install Event: Cache Core Static Shell

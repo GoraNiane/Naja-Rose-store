@@ -12,7 +12,7 @@ export type PaymentStatus =
   | 'REFUNDED'
   | 'REVIEW_REQUIRED';
 
-export type PaymentMethod = 'PAYTECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+export type PaymentMethod = 'UNITECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
 
 export interface Payment {
   id: string;

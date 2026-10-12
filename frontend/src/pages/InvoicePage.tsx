@@ -26,6 +26,8 @@ import {
   RefreshCw,
   MessageCircle,
   History,
+  Smartphone,
+  ExternalLink,
 } from 'lucide-react';
 
 export function InvoicePage() {
@@ -37,8 +39,9 @@ export function InvoicePage() {
   const ref = orderNumber || id || searchParams.get('orderNumber') || '';
   const paymentParam = searchParams.get('payment'); // 'cancelled' | 'failed'
 
-  type SelectedPaymentMethod = 'PAYTECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
-  const [selectedMethod, setSelectedMethod] = useState<SelectedPaymentMethod>('PAYTECH');
+  type SelectedPaymentMethod = 'UNITECH' | 'WAVE' | 'ORANGE_MONEY' | 'CASH_ON_DELIVERY';
+  const [selectedMethod, setSelectedMethod] = useState<SelectedPaymentMethod>('WAVE');
+  const [waveOpened, setWaveOpened] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(
     paymentParam === 'failed' || paymentParam === 'cancelled'
       ? 'La tentative de paiement a été interrompue ou annulée sur la passerelle. Vous pouvez réessayer ci-dessous ou choisir un autre mode de règlement.'
@@ -127,7 +130,7 @@ export function InvoicePage() {
             return;
           }
 
-          // 3. External Gateway (PayTech, Wave mobile, etc.)
+          // 3. External Gateway / Deep link
           window.location.href = redirectUrl;
         } catch {
           window.location.href = redirectUrl;
@@ -628,8 +631,8 @@ export function InvoicePage() {
               <div className="flex justify-between items-center pt-1">
                 <span>Mode retenu :</span>
                 <span className="font-bold text-[#2C1E21]">
-                  {order.paymentMethod === 'PAYTECH'
-                    ? 'Carte Bancaire (Visa / Mastercard)'
+                  {order.paymentMethod === 'UNITECH'
+                    ? 'UnitechPay (Wave / OM)'
                     : order.paymentMethod === 'WAVE'
                     ? 'Wave Sénégal'
                     : order.paymentMethod === 'ORANGE_MONEY'
@@ -716,8 +719,8 @@ export function InvoicePage() {
                           {formatDate(p.createdAt)}
                         </td>
                         <td className="py-2.5 px-3 font-semibold text-[#2C1E21]">
-                          {p.provider === 'PAYTECH'
-                            ? 'Carte Bancaire'
+                          {p.provider === 'UNITECH'
+                            ? 'UnitechPay'
                             : p.provider === 'WAVE'
                             ? 'Wave Sénégal'
                             : p.provider === 'ORANGE_MONEY'
@@ -798,7 +801,7 @@ export function InvoicePage() {
               onClick={() => setSelectedMethod('WAVE')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
                 selectedMethod === 'WAVE'
-                  ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
+                  ? 'border-[#0099FF] bg-[#F0F9FF] shadow-sm ring-1 ring-[#0099FF]/20'
                   : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
               }`}
             >
@@ -810,9 +813,9 @@ export function InvoicePage() {
                     className="w-11 h-11 rounded-2xl object-cover shadow-xs shrink-0 border border-[#E0F2FE]"
                   />
                   <div>
-                    <p className="font-bold text-sm text-[#2C1E21]">Wave Sénégal</p>
+                    <p className="font-bold text-sm text-[#2C1E21]">Wave Sénégal (Lien & App Direct)</p>
                     <span className="text-[10px] font-semibold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-full">
-                      Paiement Mobile Direct
+                      Ouverture automatique Wave
                     </span>
                   </div>
                 </div>
@@ -821,12 +824,22 @@ export function InvoicePage() {
                   name="paymentMethod"
                   checked={selectedMethod === 'WAVE'}
                   onChange={() => setSelectedMethod('WAVE')}
-                  className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
+                  className="mt-1 text-[#0099FF] focus:ring-[#0099FF]"
                 />
               </div>
-              <p className="text-[11px] text-[#7A6469] leading-relaxed">
-                Validation directe et instantanée avec votre application Wave.
-              </p>
+              <div className="space-y-1">
+                <p className="text-[11px] text-[#7A6469] leading-relaxed">
+                  En un clic, ce bouton ouvre directement l'application <strong>Wave</strong> avec le marchand <strong>NAJA ROSE STORE</strong> et le montant exact prescrit de votre commande.
+                </p>
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <span className="text-[10px] font-mono font-bold text-sky-900 bg-sky-100/70 border border-sky-200 px-2 py-0.5 rounded">
+                    Montant prescrit : {formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)}
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                    Bénéficiaire : NAJA ROSE STORE
+                  </span>
+                </div>
+              </div>
             </label>
 
             {/* 2. Orange Money Direct */}
@@ -867,11 +880,11 @@ export function InvoicePage() {
               </p>
             </label>
 
-            {/* 3. Carte Bancaire (Visa / Mastercard) */}
+            {/* 3. UnitechPay Unified Gateway (Wave, OM, QR) */}
             <label
-              onClick={() => setSelectedMethod('PAYTECH')}
+              onClick={() => setSelectedMethod('UNITECH')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col justify-between space-y-3 md:col-span-2 ${
-                selectedMethod === 'PAYTECH'
+                selectedMethod === 'UNITECH'
                   ? 'border-[#8B3A4A] bg-[#FAF2F0] shadow-sm ring-1 ring-[#8B3A4A]/20'
                   : 'border-[#F2E5E2] hover:border-[#D8A7A7] bg-white'
               }`}
@@ -879,26 +892,36 @@ export function InvoicePage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3.5">
                   <div className="w-11 h-11 rounded-2xl bg-[#8B3A4A] text-white flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
-                    <CreditCard className="w-5 h-5 text-white" />
+                    ⚡
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-bold text-base text-[#2C1E21]">
-                        Carte Bancaire (Visa / Mastercard)
+                        UnitechPay (Passerelle Mobile Sécurisée)
                       </p>
                       <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                        🔒 3D-Secure Sécurisé
+                        🔒 Wave & Orange Money
                       </span>
                     </div>
                     <div className="flex items-center gap-2 pt-2 flex-wrap">
-                      <div className="flex items-center gap-1 bg-[#1A1F71] text-white font-bold text-[11px] px-2.5 py-0.5 rounded tracking-wider shadow-2xs">
-                        VISA
+                      <div className="flex items-center gap-1.5 bg-white border border-[#E8CFCF] px-2.5 py-0.5 rounded shadow-2xs">
+                        <img
+                          src="/images/payments/wave-logo.jpg"
+                          alt="Wave"
+                          className="w-3.5 h-3.5 rounded-full object-cover"
+                        />
+                        <span className="text-[11px] font-bold text-[#1E293B]">Wave</span>
                       </div>
-                      <div className="flex items-center gap-1 bg-[#EB001B] text-white font-bold text-[11px] px-2.5 py-0.5 rounded tracking-wider shadow-2xs">
-                        Mastercard
+                      <div className="flex items-center gap-1.5 bg-white border border-[#E8CFCF] px-2.5 py-0.5 rounded shadow-2xs">
+                        <img
+                          src="/images/payments/orange-money-logo.jpg"
+                          alt="OM"
+                          className="w-3.5 h-3.5 rounded object-contain"
+                        />
+                        <span className="text-[11px] font-bold text-[#1E293B]">Orange Money</span>
                       </div>
                       <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                        Cartes Internationales & Locales
+                        Confirmation Instantanée
                       </span>
                     </div>
                   </div>
@@ -906,13 +929,13 @@ export function InvoicePage() {
                 <input
                   type="radio"
                   name="paymentMethod"
-                  checked={selectedMethod === 'PAYTECH'}
-                  onChange={() => setSelectedMethod('PAYTECH')}
+                  checked={selectedMethod === 'UNITECH'}
+                  onChange={() => setSelectedMethod('UNITECH')}
                   className="mt-1 text-[#8B3A4A] focus:ring-[#8B3A4A]"
                 />
               </div>
               <p className="text-[11px] text-[#7A6469] leading-relaxed pt-1">
-                Paiement en ligne instantané et 100% sécurisé par carte bancaire Visa, Mastercard ou carte prépayée avec protection 3D Secure.
+                Paiement instantané et 100% automatisé via la passerelle officielle <strong>UnitechPay Sénégal</strong> vers NAJA ROSE STORE.
               </p>
             </label>
 
@@ -963,27 +986,79 @@ export function InvoicePage() {
               <span>Modifier ma commande</span>
             </Link>
 
-            <Button
-              variant="gold"
-              size="lg"
-              disabled={initiatePaymentMutation.isPending}
-              onClick={() => initiatePaymentMutation.mutate(selectedMethod)}
-              className="w-full sm:w-auto px-8 py-4 text-sm font-bold shadow-md hover:shadow-lg transition-all"
-              rightIcon={<ArrowRight className="w-4 h-4" />}
-            >
-              {initiatePaymentMutation.isPending ? (
-                <span>Connexion sécurisée en cours...</span>
-              ) : selectedMethod === 'PAYTECH' ? (
-                <span>Payer par Carte Visa / Mastercard ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
-              ) : selectedMethod === 'WAVE' ? (
-                <span>Payer avec Wave ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
-              ) : selectedMethod === 'ORANGE_MONEY' ? (
-                <span>Payer avec Orange Money ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
-              ) : (
-                <span>Confirmer le Paiement à la Livraison ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
-              )}
-            </Button>
+            {selectedMethod === 'WAVE' ? (
+              <a
+                href={`https://pay.wave.com/m/M_sn_UoRxc-HJ7lK-/c/sn/?amount=${Math.round(remainingBalance > 0 ? remainingBalance : orderTotal)}`}
+                onClick={() => {
+                  setWaveOpened(true);
+                  initiatePaymentMutation.mutate('WAVE');
+                }}
+                className="w-full sm:w-auto px-8 py-4 text-sm font-black bg-[#0099FF] hover:bg-[#0080FF] active:scale-[0.99] text-white rounded-2xl shadow-lg shadow-sky-500/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+              >
+                <img
+                  src="/images/payments/wave-logo.jpg"
+                  alt="Wave"
+                  className="w-5 h-5 rounded-full object-cover border border-white shadow-xs"
+                />
+                <span>Ouvrir Wave pour Payer ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            ) : (
+              <Button
+                variant="gold"
+                size="lg"
+                disabled={initiatePaymentMutation.isPending}
+                onClick={() => initiatePaymentMutation.mutate(selectedMethod)}
+                className="w-full sm:w-auto px-8 py-4 text-sm font-bold shadow-md hover:shadow-lg transition-all"
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+              >
+                {initiatePaymentMutation.isPending ? (
+                  <span>Connexion sécurisée en cours...</span>
+                ) : selectedMethod === 'UNITECH' ? (
+                  <span>Payer via UnitechPay ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
+                ) : selectedMethod === 'ORANGE_MONEY' ? (
+                  <span>Payer avec Orange Money ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
+                ) : (
+                  <span>Confirmer le Paiement à la Livraison ({formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)})</span>
+                )}
+              </Button>
+            )}
           </div>
+
+          {/* Wave In-Progress Banner */}
+          {waveOpened && (
+            <div className="mt-4 p-5 rounded-2xl bg-[#F0F9FF] border border-[#BAE6FD] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#7DD3FC] flex items-center justify-center shrink-0 shadow-2xs">
+                  <Smartphone className="w-5 h-5 text-[#0284C7]" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-[#0369A1]">Transaction Wave en cours</h4>
+                  <p className="text-xs text-[#075985]">
+                    L'application Wave a été ouverte pour le règlement de <strong>{formatCFA(remainingBalance > 0 ? remainingBalance : orderTotal)}</strong> vers <strong>NAJA ROSE STORE</strong>.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                <Button
+                  variant="gold"
+                  size="md"
+                  onClick={() => navigate(`/checkout/success?orderNumber=${order?.orderNumber}`)}
+                  className="flex-1 justify-center font-bold"
+                  leftIcon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                >
+                  J'ai validé mon paiement sur Wave
+                </Button>
+                <a
+                  href={`https://pay.wave.com/m/M_sn_UoRxc-HJ7lK-/c/sn/?amount=${Math.round(remainingBalance > 0 ? remainingBalance : orderTotal)}`}
+                  className="px-4 py-2.5 rounded-xl border border-[#7DD3FC] bg-white text-xs font-bold text-[#0369A1] hover:bg-[#F0F9FF] flex items-center justify-center gap-2 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Réouvrir Wave</span>
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

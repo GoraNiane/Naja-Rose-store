@@ -539,8 +539,12 @@ export function CheckoutPage() {
                   <span className="text-[10px] font-bold text-[#2C1E21]">Orange Money</span>
                 </div>
                 <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
-                  <span className="text-xs">💳</span>
-                  <span className="text-[10px] font-bold text-[#8B3A4A]">PayTech SN</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span className="text-[10px] font-bold text-[#8B3A4A]">UnitechPay SN</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-[#FAF5F4] px-2 py-1 rounded-lg border border-[#F4E2E0]">
+                  <span className="text-xs">💵</span>
+                  <span className="text-[10px] font-bold text-[#2C1E21]">Paiement Livraison</span>
                 </div>
               </div>
             </div>

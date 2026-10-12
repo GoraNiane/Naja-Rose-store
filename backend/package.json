@@ -12,9 +12,10 @@
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
-    "test": "tsx src/tests/payment.test.ts && tsx src/tests/final-audit.test.ts && tsx src/tests/invoice-flow.test.ts",
-    "test:paytech": "tsx src/tests/paytech.test.ts",
-    "test:all": "tsx src/tests/payment.test.ts && tsx src/tests/final-audit.test.ts && tsx src/tests/invoice-flow.test.ts && tsx src/tests/api.test.ts && tsx src/tests/paytech.test.ts",
+    "test": "tsx src/tests/payment.test.ts && tsx src/tests/unitech.test.ts && tsx src/tests/wave-direct.test.ts && tsx src/tests/final-audit.test.ts && tsx src/tests/invoice-flow.test.ts",
+    "test:wave": "tsx src/tests/wave-direct.test.ts",
+    "test:unitech": "tsx src/tests/unitech.test.ts",
+    "test:all": "tsx src/tests/payment.test.ts && tsx src/tests/unitech.test.ts && tsx src/tests/wave-direct.test.ts && tsx src/tests/final-audit.test.ts && tsx src/tests/invoice-flow.test.ts && tsx src/tests/api.test.ts",
     "lint": "tsc --noEmit"
   },
   "keywords": [

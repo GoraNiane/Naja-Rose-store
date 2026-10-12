@@ -1,5 +1,6 @@
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import { PaymentFactory } from '../providers/payment/payment.factory.js';
+import { UnitechProvider, unitechProvider } from '../providers/payment/unitech.provider.js';
 import { WaveProvider, waveProvider } from '../providers/payment/wave.provider.js';
 import { OrangeMoneyProvider, orangeMoneyProvider } from '../providers/payment/orangeMoney.provider.js';
 import { CashOnDeliveryProvider, cashOnDeliveryProvider } from '../providers/payment/cashOnDelivery.provider.js';
@@ -25,6 +26,9 @@ async function runPaymentUnitTests() {
   // 1. FACTORY & REGISTRATION
   // ---------------------------------------------------------------------------
   console.log('📌 1. Payment Factory & Provider Resolution');
+
+  const unitechProv = PaymentFactory.getProvider(PaymentMethod.UNITECH);
+  assert('PaymentFactory resolves UNITECH provider correctly', unitechProv instanceof UnitechProvider);
 
   const waveProv = PaymentFactory.getProvider(PaymentMethod.WAVE);
   assert('PaymentFactory resolves WAVE provider correctly', waveProv instanceof WaveProvider);

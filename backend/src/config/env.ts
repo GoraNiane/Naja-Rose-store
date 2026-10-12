@@ -37,14 +37,21 @@ const envSchema = z.object({
   ORANGE_MONEY_API_KEY: z.string().optional(),
   ORANGE_MONEY_API_URL: z.string().default('https://api.orange.com/orange-money-webpay/dev/v1'),
 
-  // Official PayTech Senegal Gateway
-  PAYTECH_API_KEY: z.string().optional(),
-  PAYTECH_API_SECRET: z.string().optional(),
-  PAYTECH_ENV: z.enum(['test', 'prod']).default('test'),
-  PAYTECH_IPN_URL: z.string().optional(),
-  PAYTECH_SUCCESS_URL: z.string().optional(),
-  PAYTECH_CANCEL_URL: z.string().optional(),
-  FRONTEND_URL: z.string().default('http://localhost:5173'),
+  // UnitechPay Senegal Gateway Configuration
+  UNITECHPAY_API_KEY: z.string().optional().default(process.env.UNITECH_API_KEY || ''),
+  UNITECHPAY_API_SECRET: z.string().optional().default(process.env.UNITECH_API_SECRET || ''),
+  UNITECHPAY_API_URL: z.string().default(process.env.UNITECH_API_URL || 'https://api.unitech.sn/api.php'),
+  UNITECHPAY_WEBHOOK_URL: z.string().optional().default(process.env.UNITECH_WEBHOOK_URL || ''),
+  UNITECHPAY_ENV: z.enum(['test', 'prod']).default((process.env.UNITECH_ENV as 'test' | 'prod') || 'test'),
+
+  // Legacy aliases for backward compatibility
+  UNITECH_API_KEY: z.string().optional(),
+  UNITECH_API_SECRET: z.string().optional(),
+  UNITECH_API_URL: z.string().default('https://api.unitech.sn/api.php'),
+  UNITECH_ENV: z.enum(['test', 'prod']).default('test'),
+
+  FRONTEND_URL: z.string().default(process.env.APP_URL || 'http://localhost:5173'),
+  BACKEND_URL: z.string().default(process.env.API_URL?.replace(/\/api(\/v1)?\/?$/, '') || 'http://localhost:5000'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

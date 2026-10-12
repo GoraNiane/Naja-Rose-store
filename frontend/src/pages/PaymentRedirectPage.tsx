@@ -10,7 +10,6 @@ import {
   Smartphone,
   ExternalLink,
   Sparkles,
-  CreditCard,
   Store,
   FileText,
   Copy,
@@ -21,7 +20,7 @@ export function PaymentRedirectPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const method = (searchParams.get('method') || 'PAYTECH') as 'PAYTECH' | 'WAVE' | 'ORANGE_MONEY';
+  const method = (searchParams.get('method') || 'WAVE') as 'UNITECH' | 'WAVE' | 'ORANGE_MONEY';
   const orderId = searchParams.get('orderId') || '';
   const orderNumber = searchParams.get('orderNumber') || '';
   const amount = Number(searchParams.get('amount') || 0);
@@ -32,15 +31,11 @@ export function PaymentRedirectPage() {
 
   const isWave = method === 'WAVE';
   const isOM = method === 'ORANGE_MONEY';
-  const isPayTech = method === 'PAYTECH';
 
   const MERCHANT_PHONE_CLEAN = '221773817191';
   const MERCHANT_PHONE_FORMATTED = '+221 77 381 71 91';
   const MERCHANT_NAME = 'NAJA ROSE STORE';
 
-  // Construct official direct Wave payment link (Sender -> NAJA ROSE STORE)
-  const orderMemo = `Commande ${orderNumber || orderId}`;
-  const waveDeepLink = `wave://send?phone=${MERCHANT_PHONE_CLEAN}&recipient=${MERCHANT_PHONE_CLEAN}&amount=${amount}&memo=${encodeURIComponent(orderMemo)}`;
   const orangeMaxItDeepLink = `maxit://`;
 
   const handleCopyPhone = () => {
@@ -50,14 +45,6 @@ export function PaymentRedirectPage() {
       setTimeout(() => setCopiedPhone(false), 3000);
     } catch {
       // ignore
-    }
-  };
-
-  const handleOpenWaveApp = () => {
-    try {
-      window.location.href = waveDeepLink;
-    } catch {
-      window.location.href = `wave://`;
     }
   };
 
@@ -91,9 +78,7 @@ export function PaymentRedirectPage() {
           className={`p-6 sm:p-8 text-white relative overflow-hidden ${
             isWave
               ? 'bg-gradient-to-br from-[#0099FF] via-[#0080FF] to-[#0055CC]'
-              : isOM
-              ? 'bg-gradient-to-br from-[#FF6600] via-[#E65C00] to-[#1E1E1E]'
-              : 'bg-gradient-to-br from-[#8B3A4A] via-[#A84B5E] to-[#2C1E21]'
+              : 'bg-gradient-to-br from-[#FF6600] via-[#E65C00] to-[#1E1E1E]'
           }`}
         >
           {/* Background blur decorative circles */}
@@ -105,7 +90,7 @@ export function PaymentRedirectPage() {
                 <Sparkles className="w-3 h-3" /> Application Officielle Mobile
               </span>
               <h1 className="text-2xl sm:text-3xl font-black font-serif tracking-tight">
-                {isWave ? 'Wave Sénégal' : isOM ? 'Orange Money (Max it)' : 'Carte Bancaire'}
+                {isWave ? 'Wave Sénégal' : 'Orange Money (Max it)'}
               </h1>
               <p className="text-xs opacity-95 flex items-center gap-1 pt-0.5">
                 <Store className="w-3.5 h-3.5" /> Marchand : <strong>{MERCHANT_NAME}</strong>
@@ -119,16 +104,12 @@ export function PaymentRedirectPage() {
                   alt="Wave Sénégal"
                   className="w-full h-full object-cover rounded-xl"
                 />
-              ) : isOM ? (
+              ) : (
                 <img
                   src="/images/payments/orange-money-logo.jpg"
                   alt="Orange Money"
                   className="w-full h-full object-contain rounded-xl"
                 />
-              ) : (
-                <div className="w-full h-full rounded-xl bg-[#8B3A4A] flex items-center justify-center text-white text-2xl">
-                  <CreditCard className="w-8 h-8" />
-                </div>
               )}
             </div>
           </div>
@@ -194,9 +175,8 @@ export function PaymentRedirectPage() {
           {/* WAVE SPECIFIC UI & ACTIONS */}
           {isWave && (
             <div className="space-y-4">
-              <button
-                type="button"
-                onClick={handleOpenWaveApp}
+              <a
+                href={`https://pay.wave.com/m/M_sn_UoRxc-HJ7lK-/c/sn/?amount=${Math.round(amount)}`}
                 className="w-full py-4 px-6 rounded-2xl bg-[#0099FF] hover:bg-[#0080FF] active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-lg shadow-sky-500/25 flex items-center justify-center gap-3 transition-all cursor-pointer"
               >
                 <img
@@ -204,11 +184,11 @@ export function PaymentRedirectPage() {
                   alt="Wave"
                   className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-xs"
                 />
-                <span>Ouvrir l'application Wave</span>
+                <span>Ouvrir l'application Wave ({formatCFA(amount)})</span>
                 <ExternalLink className="w-4 h-4" />
-              </button>
+              </a>
               <p className="text-xs text-center text-[#7A6469] leading-relaxed">
-                Appuyez ci-dessus pour ouvrir directement l'écran de paiement Wave vers <strong>{MERCHANT_NAME} ({MERCHANT_PHONE_FORMATTED})</strong> avec le montant pré-rempli de <strong>{formatCFA(amount)}</strong>.
+                Ce lien ouvre directement l'application <strong>Wave</strong> avec la transaction pré-remplie vers le vendeur officiel <strong>{MERCHANT_NAME}</strong> et le montant prescrit de <strong>{formatCFA(amount)}</strong>.
               </p>
             </div>
           )}
@@ -235,18 +215,7 @@ export function PaymentRedirectPage() {
             </div>
           )}
 
-          {/* CARTE BANCAIRE SPECIFIC UI */}
-          {isPayTech && (
-            <div className="p-4 rounded-2xl bg-[#FAF2F0] border border-[#F4E2E0] text-xs text-[#644D52] space-y-2">
-              <div className="flex items-center gap-2 font-bold text-[#2C1E21]">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Paiement Sécurisé 3D-Secure</span>
-              </div>
-              <p className="text-[11px] leading-relaxed">
-                Règlement certifié par carte bancaire Visa, Mastercard ou carte prépayée internationale avec confirmation instantanée.
-              </p>
-            </div>
-          )}
+
 
           {/* Session details */}
           {txId && (

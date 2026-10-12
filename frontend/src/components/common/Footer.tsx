@@ -180,7 +180,7 @@ export function Footer() {
               <span className="text-[10px] font-bold text-[#1E293B]">Orange Money</span>
             </div>
             <span className="bg-[#382B2F] text-[#E7A8B4] border border-[#523A40] text-[10px] font-semibold px-2 py-0.5 rounded-md">
-              PayTech SN
+              ⚡ UnitechPay
             </span>
             <span className="bg-[#382B2F] text-[#E7A8B4] border border-[#523A40] text-[10px] font-semibold px-2 py-0.5 rounded-md">
               💵 Livraison

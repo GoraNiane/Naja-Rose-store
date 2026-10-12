@@ -58,22 +58,27 @@ export class PaymentService {
 
     const successUrl =
       options?.successUrl ||
-      `${env.APP_URL}/checkout/success?orderNumber=${order.orderNumber}`;
+      `${env.FRONTEND_URL || env.APP_URL}/checkout/success?orderNumber=${order.orderNumber}`;
     const cancelUrl =
       options?.cancelUrl ||
-      `${env.APP_URL}/checkout/cancel?orderNumber=${order.orderNumber}`;
+      `${env.FRONTEND_URL || env.APP_URL}/commande/${order.orderNumber}/facture?payment=cancelled`;
     const webhookUrl =
       options?.webhookUrl ||
-      (order.paymentMethod === PaymentMethod.PAYTECH
-        ? `${env.API_URL}/payments/paytech/ipn`
-        : `${env.API_URL}/payments/${order.paymentMethod.toLowerCase().replace('_', '-')}/webhook`);
+      `${env.API_URL}/payments/${order.paymentMethod.toLowerCase().replace('_', '-')}/webhook`;
 
     const customerName = `${order.customer.firstName} ${order.customer.lastName}`;
+
+    // Exact balance calculation (Solde réel restant ou total de la commande)
+    const confirmedPaymentsForCalc = order.payments.filter((p) => p.status === PaymentStatus.PAID);
+    const currentPaidForCalc = confirmedPaymentsForCalc.reduce((acc, p) => acc + Number(p.amount), 0);
+    const orderTotalForCalc = Math.round(Number(order.total));
+    const calculatedRemainingForCalc = Math.max(0, orderTotalForCalc - currentPaidForCalc);
+    const amountToPay = calculatedRemainingForCalc > 0 ? calculatedRemainingForCalc : orderTotalForCalc;
 
     const paymentResult = await provider.createPayment({
       orderId: order.id,
       orderNumber: order.orderNumber,
-      amount: Number(order.total),
+      amount: amountToPay,
       currency: 'XOF',
       customerPhone: order.phone,
       customerEmail: (order.email || order.customer.email) || undefined,
@@ -92,9 +97,11 @@ export class PaymentService {
         data: {
           transactionId: paymentResult.transactionId || existingPayment.transactionId,
           status: paymentResult.status,
+          amount: new Prisma.Decimal(amountToPay),
           metadata: {
             ...((existingPayment.metadata as Record<string, unknown>) || {}),
             ...paymentResult.metadata,
+            waveLaunchUrl: paymentResult.waveLaunchUrl || paymentResult.paymentUrl,
             isSandbox: paymentResult.isSandbox,
             initiatedAt: new Date().toISOString(),
           } as Prisma.InputJsonValue,
@@ -105,11 +112,12 @@ export class PaymentService {
         data: {
           orderId: order.id,
           provider: order.paymentMethod,
-          amount: order.total,
+          amount: new Prisma.Decimal(amountToPay),
           transactionId: paymentResult.transactionId,
           status: paymentResult.status,
           metadata: {
             ...paymentResult.metadata,
+            waveLaunchUrl: paymentResult.waveLaunchUrl || paymentResult.paymentUrl,
             isSandbox: paymentResult.isSandbox,
             initiatedAt: new Date().toISOString(),
           } as Prisma.InputJsonValue,
@@ -121,8 +129,9 @@ export class PaymentService {
       orderNumber: order.orderNumber,
       orderId: order.id,
       method: order.paymentMethod,
-      amount: Number(order.total),
+      amount: amountToPay,
       currency: 'XOF',
+      wave_launch_url: paymentResult.waveLaunchUrl || paymentResult.paymentUrl,
       ...paymentResult,
     };
   }
@@ -383,6 +392,85 @@ export class PaymentService {
     const calculatedPaidSum = confirmedPayments.reduce((acc, p) => acc + Number(p.amount), 0);
     const orderTotal = Math.round(Number(order.total));
     const calculatedRemaining = Math.max(0, orderTotal - calculatedPaidSum);
+
+    // Actively query Wave session status from gateway if payment is pending
+    if (
+      order.paymentStatus !== PaymentStatus.PAID &&
+      order.paymentMethod === PaymentMethod.WAVE &&
+      latestPayment
+    ) {
+      const metadata = (latestPayment.metadata as Record<string, any>) || {};
+      const sessionId =
+        metadata.checkoutSessionId ||
+        (latestPayment.transactionId?.startsWith('cos') ? latestPayment.transactionId : null);
+
+      if (sessionId) {
+        try {
+          const waveStatus = await PaymentFactory.getProvider(PaymentMethod.WAVE).getPaymentStatus(sessionId);
+          if (waveStatus.status === PaymentStatus.PAID) {
+            logger.info(
+              `[PaymentService] Reconciling confirmed Wave payment for order ${order.orderNumber} via direct session check`
+            );
+            await this.processWebhook(PaymentMethod.WAVE, {
+              type: 'checkout.session.completed',
+              data: {
+                id: sessionId,
+                client_reference: order.orderNumber,
+                transaction_id: waveStatus.transactionId,
+                payment_status: 'succeeded',
+                checkout_status: 'complete',
+                amount: String(calculatedRemaining > 0 ? calculatedRemaining : orderTotal),
+                currency: 'XOF',
+              },
+            });
+
+            // Re-fetch updated order state
+            const refreshedOrder = await prisma.order.findUnique({
+              where: { id: order.id },
+              include: {
+                payments: { orderBy: { createdAt: 'desc' } },
+                deliveryZone: true,
+              },
+            });
+            if (refreshedOrder) {
+              const refreshedConfirmed = refreshedOrder.payments.filter((p) => p.status === PaymentStatus.PAID);
+              const refreshedPaidSum = refreshedConfirmed.reduce((acc, p) => acc + Number(p.amount), 0);
+              const refreshedTotal = Math.round(Number(refreshedOrder.total));
+              const refreshedRemaining = Math.max(0, refreshedTotal - refreshedPaidSum);
+              const refreshedLatest = refreshedOrder.payments[0];
+
+              return {
+                orderId: refreshedOrder.id,
+                orderNumber: refreshedOrder.orderNumber,
+                paymentMethod: refreshedOrder.paymentMethod,
+                paymentStatus: refreshedOrder.paymentStatus,
+                orderStatus: refreshedOrder.status,
+                total: refreshedTotal,
+                subtotal: Math.round(Number(refreshedOrder.subtotal)),
+                deliveryFee: Math.round(Number(refreshedOrder.deliveryFee)),
+                amountPaid: refreshedPaidSum,
+                remainingBalance: refreshedRemaining,
+                transactionId: refreshedLatest?.transactionId,
+                updatedAt: refreshedLatest?.updatedAt || refreshedOrder.updatedAt,
+                isPaid: refreshedOrder.paymentStatus === PaymentStatus.PAID || refreshedRemaining === 0,
+                isPartiallyPaid: refreshedOrder.paymentStatus === PaymentStatus.PARTIALLY_PAID,
+                isReviewRequired: refreshedOrder.paymentStatus === PaymentStatus.REVIEW_REQUIRED,
+                payments: refreshedOrder.payments.map((p) => ({
+                  id: p.id,
+                  provider: p.provider,
+                  transactionId: p.transactionId,
+                  amount: Math.round(Number(p.amount)),
+                  status: p.status,
+                  createdAt: p.createdAt,
+                })),
+              };
+            }
+          }
+        } catch (err) {
+          logger.warn(`[PaymentService] Wave session polling check failed for order ${order.orderNumber}:`, err);
+        }
+      }
+    }
 
     const isPaid = order.paymentStatus === PaymentStatus.PAID || calculatedRemaining === 0;
     const isPartiallyPaid = order.paymentStatus === PaymentStatus.PARTIALLY_PAID || (calculatedPaidSum > 0 && calculatedRemaining > 0);

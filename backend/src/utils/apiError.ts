@@ -39,6 +39,10 @@ export class ApiError extends Error {
     return new ApiError(409, message, code);
   }
 
+  static badGateway(message = 'Erreur passerelle externe', code = 'BAD_GATEWAY') {
+    return new ApiError(502, message, code);
+  }
+
   static internal(message = 'Erreur interne du serveur', code = 'INTERNAL_ERROR') {
     return new ApiError(500, message, code, undefined, false);
   }

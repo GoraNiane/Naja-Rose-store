@@ -1,313 +1,187 @@
-import crypto from 'crypto';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
-import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
+import { ApiError } from '../../utils/apiError.js';
 import {
   PaymentProvider,
   CreatePaymentParams,
   PaymentResult,
   WebhookResult,
 } from './payment.interface.js';
-import { ApiError } from '../../utils/apiError.js';
-import { paytechService } from '../../services/paytech.service.js';
+import { waveService, WaveWebhookPayload } from '../../services/wave.service.js';
 
 export class WaveProvider implements PaymentProvider {
   public readonly method: PaymentMethod = PaymentMethod.WAVE;
   public readonly isSandbox: boolean;
 
-  private apiKey?: string;
-  private secret?: string;
-  private webhookSecret?: string;
-  private baseUrl = 'https://api.wave.com/v1';
-
   constructor() {
-    this.apiKey = env.WAVE_API_KEY;
-    this.secret = env.WAVE_SECRET;
-    this.webhookSecret = env.WAVE_WEBHOOK_SECRET || env.WAVE_SECRET;
-
-    // Detect sandbox / test mode if API keys are missing, placeholder or set to test
-    this.isSandbox =
-      !this.apiKey ||
-      this.apiKey.includes('your_wave_api_key') ||
-      this.apiKey.toLowerCase().includes('test') ||
-      this.apiKey.toLowerCase().includes('sandbox') ||
-      this.apiKey.toLowerCase().includes('mock') ||
-      process.env.NODE_ENV === 'test';
-
-    logger.info('[Wave Senegal] Initialized using PayTech unified merchant gateway');
+    this.isSandbox = waveService.isSandbox;
+    logger.info(
+      `[Wave Checkout Direct] Provider registered (mode: ${
+        this.isSandbox ? 'SANDBOX' : 'PRODUCTION'
+      })`
+    );
   }
 
+  /**
+   * Initializes a direct Wave Checkout session via POST https://api.wave.com/v1/checkout/sessions
+   */
   async createPayment(params: CreatePaymentParams): Promise<PaymentResult> {
-    logger.info(`[Wave Senegal] Initiating payment for order ${params.orderNumber} (${params.amount} XOF)`);
+    logger.info(
+      `[Wave Checkout Direct] Creating checkout session for order ${params.orderNumber} (${params.amount} XOF)`
+    );
 
-    // 1. Official PayTech Unified Gateway session (Handles Wave Senegal directly to merchant)
-    if (env.PAYTECH_API_KEY && env.PAYTECH_API_SECRET) {
-      logger.info(
-        `[Wave Senegal] Creating official PayTech session for merchant NAJA ROSE STORE (Order #${params.orderNumber})`
-      );
-      const paytechResult = await paytechService.createPaymentSession({
-        orderIdOrNumber: params.orderNumber || params.orderId,
-        successUrl: params.successUrl,
-        cancelUrl: params.cancelUrl,
-        ipnUrl: params.webhookUrl,
-      });
+    const session = await waveService.createCheckoutSession({
+      orderId: params.orderId,
+      orderNumber: params.orderNumber,
+      amount: params.amount,
+      currency: params.currency || 'XOF',
+      customerPhone: params.customerPhone,
+      customerEmail: params.customerEmail,
+      customerName: params.customerName,
+      successUrl: params.successUrl,
+      errorUrl: params.cancelUrl,
+    });
 
-      return {
-        transactionId: paytechResult.token,
-        paymentUrl: paytechResult.paymentUrl,
-        launchUrl: paytechResult.redirectUrl,
-        token: paytechResult.token,
-        status: PaymentStatus.PENDING,
-        isSandbox: paytechResult.isSandbox,
-        instructions: `Paiement Wave sécurisé via la passerelle officielle PayTech vers le marchand NAJA ROSE STORE`,
-        metadata: {
-          provider: 'WAVE',
-          gateway: 'PAYTECH',
-          redirectUrl: paytechResult.redirectUrl,
-          initiatedAt: new Date().toISOString(),
-        },
-      };
-    }
-
-    // 2. Sandbox fallback if PayTech keys missing
-    if (this.isSandbox) {
-      const mockSessionId = `wave_sess_sbx_${params.orderNumber}_${Date.now()}`;
-      const merchantPhone = '221773817191';
-      const sandboxRedirectUrl = `/checkout/payment-redirect?method=WAVE&orderId=${params.orderId}&orderNumber=${params.orderNumber}&amount=${params.amount}&phone=${encodeURIComponent(merchantPhone)}&txId=${mockSessionId}&sandbox=true`;
-      const waveDeepLink = `wave://send?phone=${merchantPhone}&recipient=${merchantPhone}&amount=${params.amount}&memo=${encodeURIComponent(`Commande ${params.orderNumber}`)}`;
-
-      return {
-        transactionId: mockSessionId,
-        paymentUrl: sandboxRedirectUrl,
-        launchUrl: sandboxRedirectUrl,
-        waveLaunchUrl: waveDeepLink,
-        customerPhone: params.customerPhone,
-        status: PaymentStatus.PENDING,
-        isSandbox: true,
-        instructions: `Ouvrez l'application Wave pour régler ${params.amount} FCFA au marchand NAJA ROSE STORE (+221 77 381 71 91)`,
-        metadata: {
-          provider: 'WAVE',
-          mode: 'SANDBOX',
-          clientReference: params.orderNumber,
-          customerPhone: params.customerPhone,
-          amount: params.amount,
-          currency: params.currency || 'XOF',
-          deepLink: waveDeepLink,
-          initiatedAt: new Date().toISOString(),
-        },
-      };
-    }
-
-    // 2. Official Wave Senegal v1 Checkout Sessions API
-    try {
-      const response = await fetch(`${this.baseUrl}/checkout/sessions`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          amount: Math.round(params.amount).toString(),
-          currency: params.currency || 'XOF',
-          client_reference: params.orderNumber,
-          success_url: params.successUrl,
-          error_url: params.cancelUrl,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        logger.error(`[Wave Senegal] API Error response (${response.status}):`, errorBody);
-        throw ApiError.badRequest(`Échec de création de session Wave: ${errorBody}`);
-      }
-
-      const data = (await response.json()) as {
-        id: string;
-        wave_launch_url: string;
-        checkout_status?: string;
-      };
-
-      return {
-        transactionId: data.id,
-        paymentUrl: data.wave_launch_url,
-        launchUrl: data.wave_launch_url,
-        status: PaymentStatus.PENDING,
-        isSandbox: false,
-        metadata: {
-          provider: 'WAVE',
-          waveSessionId: data.id,
-          rawStatus: data.checkout_status,
-          initiatedAt: new Date().toISOString(),
-        },
-      };
-    } catch (error) {
-      logger.error('[Wave Senegal] Communication failure with Wave Checkout API:', error);
-      throw error instanceof ApiError
-        ? error
-        : ApiError.internal('Erreur de communication avec la passerelle Wave Senegal');
-    }
+    return {
+      transactionId: session.id, // Wave Checkout Session ID: cos-...
+      paymentUrl: session.wave_launch_url,
+      launchUrl: session.wave_launch_url,
+      waveLaunchUrl: session.wave_launch_url,
+      customerPhone: params.customerPhone,
+      status: PaymentStatus.PENDING,
+      isSandbox: this.isSandbox,
+      instructions: `Session Wave Checkout officielle créée. Redirection vers ${session.wave_launch_url}`,
+      metadata: {
+        provider: 'WAVE',
+        directWave: true,
+        checkoutSessionId: session.id,
+        waveLaunchUrl: session.wave_launch_url,
+        businessName: session.business_name || 'NAJA ROSE STORE',
+        merchantId: 'M_sn_UoRxc-HJ7lK-',
+        amount: session.amount,
+        currency: session.currency,
+        clientReference: session.client_reference,
+        whenCreated: session.when_created,
+        whenExpires: session.when_expires,
+        initiatedAt: new Date().toISOString(),
+      },
+    };
   }
 
+  /**
+   * Queries Wave Checkout session status via GET https://api.wave.com/v1/checkout/sessions/:id
+   */
   async getPaymentStatus(transactionIdOrOrderId: string): Promise<PaymentResult> {
-    if (this.isSandbox) {
-      return {
-        transactionId: transactionIdOrOrderId,
-        status: PaymentStatus.PENDING,
-        isSandbox: true,
-        metadata: { mode: 'SANDBOX' },
-      };
-    }
+    const session = await waveService.getCheckoutSession(transactionIdOrOrderId);
 
-    try {
-      const response = await fetch(`${this.baseUrl}/checkout/sessions/${transactionIdOrOrderId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          Accept: 'application/json',
+    if (session) {
+      const isPaid =
+        session.payment_status === 'succeeded' ||
+        session.checkout_status === 'complete';
+      const isFailed =
+        session.checkout_status === 'expired' ||
+        session.checkout_status === 'cancelled' ||
+        session.last_payment_error !== null;
+
+      const mappedStatus: PaymentStatus = isPaid
+        ? PaymentStatus.PAID
+        : isFailed
+        ? PaymentStatus.FAILED
+        : PaymentStatus.PENDING;
+
+      return {
+        transactionId: session.transaction_id || session.id,
+        paymentUrl: session.wave_launch_url,
+        waveLaunchUrl: session.wave_launch_url,
+        status: mappedStatus,
+        isSandbox: this.isSandbox,
+        metadata: {
+          checkoutSessionId: session.id,
+          paymentStatus: session.payment_status,
+          checkoutStatus: session.checkout_status,
+          transactionId: session.transaction_id,
         },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Wave status error: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as {
-        id: string;
-        checkout_status: string;
-        payment_status?: string;
-        amount: string;
       };
-
-      let status: PaymentStatus = PaymentStatus.PENDING;
-      if (data.payment_status === 'succeeded' || data.checkout_status === 'complete') {
-        status = PaymentStatus.PAID;
-      } else if (data.checkout_status === 'cancelled' || data.checkout_status === 'expired') {
-        status = PaymentStatus.FAILED;
-      } else if (data.checkout_status === 'processing') {
-        status = PaymentStatus.PROCESSING;
-      }
-
-      return {
-        transactionId: data.id,
-        status,
-        isSandbox: false,
-        metadata: data as unknown as Record<string, unknown>,
-      };
-    } catch (error) {
-      logger.error('[Wave Senegal] Error retrieving session status:', error);
-      throw ApiError.internal('Impossible de vérifier le statut de la session Wave');
     }
+
+    return {
+      transactionId: transactionIdOrOrderId,
+      status: PaymentStatus.PENDING,
+      isSandbox: this.isSandbox,
+    };
   }
 
+  /**
+   * Processes incoming server-to-server webhook notifications from Wave
+   * Verifies HMAC signature using Wave-Signature header and raw request body
+   */
   async handleWebhook(
     payload: unknown,
     headers?: Record<string, string | string[] | undefined>,
     rawBody?: string
   ): Promise<WebhookResult> {
-    logger.info('[Wave Senegal] Processing incoming webhook notification');
+    logger.info('[Wave Checkout Direct] Processing incoming Webhook notification');
 
-    // 1. Signature Verification
-    if (this.webhookSecret && !this.isSandbox) {
-      const signatureHeader = (headers?.['wave-signature'] ||
-        headers?.['Wave-Signature'] ||
-        headers?.['wave_signature']) as string | undefined;
+    const signatureHeader = (headers?.['wave-signature'] ||
+      headers?.['Wave-Signature'] ||
+      headers?.['wavesignature']) as string | undefined;
 
-      if (!signatureHeader) {
-        logger.error('[Wave Senegal] Missing wave-signature header in live mode');
-        throw ApiError.unauthorized('En-tête de signature Wave manquant');
-      }
-
-      const isValid = this.verifySignature(signatureHeader, rawBody || JSON.stringify(payload));
-      if (!isValid) {
-        logger.error('[Wave Senegal] Invalid webhook signature detected');
-        throw ApiError.unauthorized('Signature webhook Wave non valide');
-      }
+    // 1. Verify cryptographic signature if secret is active
+    const verification = waveService.verifyWebhookSignature(signatureHeader, rawBody);
+    if (!verification.isValid) {
+      logger.error(
+        `[Wave Checkout Direct] Signature verification rejected: ${verification.reason}`
+      );
+      throw ApiError.unauthorized(`Signature Wave invalide: ${verification.reason}`);
     }
 
-    // 2. Parse standard Wave event object
-    const event = payload as {
-      type?: string;
-      id?: string;
-      data?: {
-        id?: string;
-        client_reference?: string;
-        order_id?: string;
-        amount?: string | number;
-        currency?: string;
-        payment_status?: string;
-        checkout_status?: string;
-        [key: string]: unknown;
-      };
-    };
+    // 2. Parse event payload
+    const event = (payload || {}) as WaveWebhookPayload & Record<string, any>;
+    const eventType = event.type || 'checkout.session.completed';
+    const data = event.data || event;
 
-    const sessionData = (event.data || payload || {}) as Record<string, unknown>;
-    const transactionId = sessionData.id ? String(sessionData.id) : event.id ? String(event.id) : undefined;
-    const orderNumber = (sessionData.client_reference || sessionData.order_id || '') as string;
-    const rawPaymentStatus = String(
-      sessionData.payment_status || sessionData.checkout_status || ''
-    ).toLowerCase();
+    const sessionId = data.id;
+    const clientReference = data.client_reference || event.client_reference || '';
+    const waveTxId = data.transaction_id || sessionId;
+    const amountNum = data.amount ? Number(data.amount) : undefined;
+    const currency = data.currency || 'XOF';
 
-    let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
+    const isComplete =
+      data.payment_status === 'succeeded' ||
+      data.checkout_status === 'complete';
+    const isFailed =
+      data.checkout_status === 'cancelled' ||
+      data.checkout_status === 'expired';
 
-    if (
-      rawPaymentStatus === 'cancelled' ||
-      rawPaymentStatus === 'expired' ||
-      rawPaymentStatus === 'failed'
-    ) {
-      paymentStatus = PaymentStatus.FAILED;
-    } else if (
-      rawPaymentStatus === 'succeeded' ||
-      rawPaymentStatus === 'complete' ||
-      rawPaymentStatus === 'paid' ||
-      event.type === 'checkout.session.completed'
-    ) {
-      paymentStatus = PaymentStatus.PAID;
-    } else if (rawPaymentStatus === 'processing') {
-      paymentStatus = PaymentStatus.PROCESSING;
-    }
+    const mappedStatus: PaymentStatus = isComplete
+      ? PaymentStatus.PAID
+      : isFailed
+      ? PaymentStatus.FAILED
+      : PaymentStatus.PENDING;
 
-    const amount = sessionData.amount ? parseFloat(String(sessionData.amount)) : undefined;
+    logger.info(
+      `[Wave Checkout Direct] Webhook verified: type=${eventType}, ref=${clientReference}, session=${sessionId}, tx=${waveTxId}, status=${mappedStatus}`
+    );
 
     return {
       success: true,
-      orderNumber,
-      transactionId,
-      paymentStatus,
-      amount,
-      currency: (sessionData.currency as string) || 'XOF',
+      orderNumber: clientReference || undefined,
+      transactionId: waveTxId || sessionId,
+      paymentStatus: mappedStatus,
+      amount: amountNum,
+      currency,
       metadata: {
         provider: 'WAVE',
-        eventType: event.type,
-        rawPayload: payload,
+        gateway: 'WAVE_CHECKOUT_DIRECT',
+        checkoutSessionId: sessionId,
+        transactionId: waveTxId,
+        paymentStatus: data.payment_status,
+        checkoutStatus: data.checkout_status,
+        whenCompleted: data.when_completed,
+        webhookVerifiedAt: new Date().toISOString(),
       },
-      message: `Wave payment notification processed (${paymentStatus})`,
+      message: `Notification Wave traitée avec succès (${mappedStatus})`,
     };
-  }
-
-  private verifySignature(header: string, payloadString: string): boolean {
-    try {
-      // Wave format: t=1492774577,v1=5257a869e7ecebeda32affa62cd49f...
-      const parts = header.split(',');
-      const timestampPart = parts.find((p) => p.startsWith('t='));
-      const sigPart = parts.find((p) => p.startsWith('v1='));
-
-      if (!timestampPart || !sigPart || !this.webhookSecret) {
-        return false;
-      }
-
-      const timestamp = timestampPart.slice(2);
-      const signature = sigPart.slice(3);
-
-      const computedSig = crypto
-        .createHmac('sha256', this.webhookSecret)
-        .update(`${timestamp}.${payloadString}`)
-        .digest('hex');
-
-      return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(computedSig));
-    } catch {
-      return false;
-    }
   }
 }
 

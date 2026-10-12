@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
 import { paymentService } from '../services/payment.service.js';
-import { paytechService } from '../services/paytech.service.js';
 import { ApiResponse } from '../utils/apiResponse.js';
 import { ApiError } from '../utils/apiError.js';
 import { logger } from '../utils/logger.js';
@@ -52,7 +51,15 @@ export class PaymentController {
   static async handleWaveWebhook(req: Request, res: Response, next: NextFunction) {
     try {
       logger.info('[Wave Webhook Endpoint] Received webhook notification');
-      const rawBody = (req as any).rawBody;
+      const rawBody =
+        (req as any).rawBody ||
+        (typeof req.body === 'string'
+          ? req.body
+          : Buffer.isBuffer(req.body)
+          ? req.body.toString('utf-8')
+          : req.body
+          ? JSON.stringify(req.body)
+          : '');
 
       const result = await paymentService.processWebhook(
         PaymentMethod.WAVE,
@@ -112,26 +119,31 @@ export class PaymentController {
   }
 
   /**
-   * POST /api/payments/paytech/ipn (and /webhook)
-   * Official PayTech Senegal IPN Callback endpoint
+   * POST /api/payments/unitech/webhook
+   * Official UnitechPay Senegal Webhook endpoint
    */
-  static async handlePayTechIPN(req: Request, res: Response, next: NextFunction) {
+  static async handleUnitechWebhook(req: Request, res: Response, next: NextFunction) {
     try {
-      logger.info('[PayTech IPN Endpoint] Received notification from PayTech gateway');
-      const payload = req.body;
+      logger.info('[UnitechPay Webhook Endpoint] Received notification from UnitechPay');
+      const rawBody = (req as any).rawBody;
 
-      const result = await paytechService.handleIpnNotification(payload);
+      const result = await paymentService.processWebhook(
+        PaymentMethod.UNITECH,
+        req.body,
+        req.headers,
+        rawBody
+      );
 
       return res.status(200).json({
-        success: 1,
-        message: 'PayTech IPN processed successfully',
+        success: true,
+        message: 'UnitechPay webhook received and processed',
         data: result,
       });
     } catch (error) {
-      logger.error('[PayTech IPN Endpoint] Failed processing PayTech IPN:', error);
+      logger.error('[UnitechPay Webhook Endpoint] Webhook processing failed:', error);
       if (error instanceof ApiError) {
         return res.status(error.statusCode).json({
-          success: 0,
+          success: false,
           error: error.message,
         });
       }

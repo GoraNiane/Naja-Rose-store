@@ -359,12 +359,12 @@ export class InvoiceService {
     });
 
     const payLabel =
-      order.paymentMethod === 'WAVE'
+      order.paymentMethod === 'UNITECH'
+        ? 'UnitechPay (Wave / Orange Money)'
+        : order.paymentMethod === 'WAVE'
         ? 'Wave Senegal (Paiement Mobile Direct)'
         : order.paymentMethod === 'ORANGE_MONEY'
         ? 'Orange Money Senegal (WebPay)'
-        : order.paymentMethod === 'PAYTECH'
-        ? 'Carte Bancaire Visa / Mastercard'
         : 'Paiement a la Livraison (Especes / Wave)';
 
     page.drawText(cleanPdfText(`Moyen : ${payLabel.substring(0, 36)}`), {

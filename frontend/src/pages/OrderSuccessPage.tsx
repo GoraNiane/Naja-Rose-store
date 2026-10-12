@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../services/order.service';
+import { paymentService } from '../services/payment.service';
 import { formatCFA, formatDate } from '../lib/utils';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
@@ -37,7 +38,15 @@ export function OrderSuccessPage() {
     refetch,
   } = useQuery({
     queryKey: ['order-success-verification', orderNumber],
-    queryFn: () => orderService.getOrderByNumber(orderNumber),
+    queryFn: async () => {
+      // Actively reconcile payment status with backend gateway verification
+      try {
+        await paymentService.getPaymentStatus(orderNumber);
+      } catch {
+        // ignore
+      }
+      return orderService.getOrderByNumber(orderNumber);
+    },
     enabled: !!orderNumber,
     refetchInterval: (query) => {
       const status = query.state.data?.paymentStatus;
